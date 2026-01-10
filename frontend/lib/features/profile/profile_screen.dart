@@ -68,6 +68,26 @@ class ProfileScreen extends StatelessWidget {
                       _statItem("Rank", "#42"),
                     ],
                   ),
+                  const SizedBox(height: 16),
+                  // Edit Profile Button
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () => context.push('/profile/edit'),
+                      icon: const Icon(Icons.edit_outlined, size: 18),
+                      label: const Text('Edit Profile'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppTheme.primaryCyan,
+                        side: BorderSide(
+                          color: AppTheme.primaryCyan.withOpacity(0.5),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ).animate().fadeIn().slideY(begin: -0.1, end: 0),
@@ -142,24 +162,100 @@ class ProfileScreen extends StatelessWidget {
             const SizedBox(height: 24),
 
             // Menu Items
-            _menuItem(context, Icons.settings, "Settings", () {}),
-            _menuItem(context, Icons.help_outline, "Help & Support", () {}),
+            _menuItem(
+              context,
+              Icons.settings,
+              "Settings",
+              () => context.push('/profile/settings'),
+            ),
+            _menuItem(
+              context,
+              Icons.help_outline,
+              "Help & Support",
+              () => context.push('/profile/help'),
+            ),
             _menuItem(
               context,
               Icons.privacy_tip_outlined,
               "Privacy Policy",
-              () {},
+              () => context.push('/profile/privacy'),
             ),
-            _menuItem(
-              context,
-              Icons.logout,
-              "Logout",
-              () => context.go('/login'),
+
+            // Logout Button - Redesigned
+            const SizedBox(height: 8),
+            GestureDetector(
+              onTap: () => _showLogoutDialog(context),
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.red.withOpacity(0.4)),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(Icons.logout, color: Colors.red),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Text(
+                        "Logout",
+                        style: AppTheme.bodyMedium.copyWith(
+                          color: Colors.red,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    const Icon(Icons.chevron_right, color: Colors.red),
+                  ],
+                ),
+              ),
             ),
 
             const SizedBox(height: 100),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showLogoutDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppTheme.cardColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('Logout', style: AppTheme.headlineMedium),
+        content: const Text(
+          'Are you sure you want to logout?',
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel', style: TextStyle(color: AppTheme.textGrey)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              context.go('/login');
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: const Text('Logout', style: TextStyle(color: Colors.white)),
+          ),
+        ],
       ),
     );
   }

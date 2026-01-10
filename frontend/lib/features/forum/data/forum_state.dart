@@ -67,17 +67,54 @@ class Comment {
   final String text;
   final String author;
   final String avatarEmoji;
-  final int votes;
+  final int upvotes;
+  final int downvotes;
   final DateTime createdAt;
+  final List<Comment> replies;
+  final Set<String> upvotedBy;
+  final Set<String> downvotedBy;
+  final String? parentId;
 
   Comment({
     required this.id,
     required this.text,
     required this.author,
     required this.avatarEmoji,
-    required this.votes,
+    this.upvotes = 0,
+    this.downvotes = 0,
     required this.createdAt,
-  });
+    this.replies = const [],
+    Set<String>? upvotedBy,
+    Set<String>? downvotedBy,
+    this.parentId,
+  }) : upvotedBy = upvotedBy ?? {},
+       downvotedBy = downvotedBy ?? {};
+
+  // Legacy getter for backwards compatibility
+  int get votes => upvotes - downvotes;
+
+  Comment copyWith({
+    String? text,
+    int? upvotes,
+    int? downvotes,
+    List<Comment>? replies,
+    Set<String>? upvotedBy,
+    Set<String>? downvotedBy,
+  }) {
+    return Comment(
+      id: id,
+      text: text ?? this.text,
+      author: author,
+      avatarEmoji: avatarEmoji,
+      upvotes: upvotes ?? this.upvotes,
+      downvotes: downvotes ?? this.downvotes,
+      createdAt: createdAt,
+      replies: replies ?? this.replies,
+      upvotedBy: upvotedBy ?? this.upvotedBy,
+      downvotedBy: downvotedBy ?? this.downvotedBy,
+      parentId: parentId,
+    );
+  }
 }
 
 class ForumState {
@@ -123,7 +160,8 @@ class ForumController extends Notifier<ForumState> {
               text: 'Great question! I recommend starting with Riverpod.',
               author: 'DevMaster',
               avatarEmoji: '🧑‍💻',
-              votes: 15,
+              upvotes: 15,
+              downvotes: 0,
               createdAt: DateTime.now().subtract(const Duration(hours: 1)),
             ),
             Comment(
@@ -131,7 +169,8 @@ class ForumController extends Notifier<ForumState> {
               text: 'Provider is simpler for beginners.',
               author: 'StudentPro',
               avatarEmoji: '👩‍🎓',
-              votes: 8,
+              upvotes: 8,
+              downvotes: 0,
               createdAt: DateTime.now().subtract(const Duration(minutes: 45)),
             ),
             Comment(
@@ -139,7 +178,8 @@ class ForumController extends Notifier<ForumState> {
               text: 'Bloc is great for complex apps!',
               author: 'CodeBot',
               avatarEmoji: '🤖',
-              votes: 5,
+              upvotes: 5,
+              downvotes: 0,
               createdAt: DateTime.now().subtract(const Duration(minutes: 30)),
             ),
           ],
@@ -162,7 +202,8 @@ class ForumController extends Notifier<ForumState> {
               text: 'Practice with the official codelabs!',
               author: 'CertifiedDev',
               avatarEmoji: '🏆',
-              votes: 20,
+              upvotes: 20,
+              downvotes: 0,
               createdAt: DateTime.now().subtract(const Duration(hours: 4)),
             ),
             Comment(
@@ -170,7 +211,8 @@ class ForumController extends Notifier<ForumState> {
               text: 'Focus on widget lifecycles.',
               author: 'FlutterPro',
               avatarEmoji: '💎',
-              votes: 12,
+              upvotes: 12,
+              downvotes: 0,
               createdAt: DateTime.now().subtract(const Duration(hours: 3)),
             ),
           ],
@@ -193,7 +235,8 @@ class ForumController extends Notifier<ForumState> {
               text: 'Use AnimatedBuilder for better performance!',
               author: 'PerfGuru',
               avatarEmoji: '⚡',
-              votes: 25,
+              upvotes: 25,
+              downvotes: 0,
               createdAt: DateTime.now().subtract(const Duration(hours: 20)),
             ),
           ],
@@ -245,6 +288,141 @@ class ForumController extends Notifier<ForumState> {
     );
   }
 
+  void upvoteComment(String postId, String commentId) {
+    final userId = state.currentUserId;
+    state = state.copyWith(
+      posts: state.posts.map((post) {
+        if (post.id == postId) {
+          return post.copyWith(
+            comments: _updateCommentVote(
+              post.comments,
+              commentId,
+              userId,
+              true,
+            ),
+          );
+        }
+        return post;
+      }).toList(),
+    );
+  }
+
+  void downvoteComment(String postId, String commentId) {
+    final userId = state.currentUserId;
+    state = state.copyWith(
+      posts: state.posts.map((post) {
+        if (post.id == postId) {
+          return post.copyWith(
+            comments: _updateCommentVote(
+              post.comments,
+              commentId,
+              userId,
+              false,
+            ),
+          );
+        }
+        return post;
+      }).toList(),
+    );
+  }
+
+  List<Comment> _updateCommentVote(
+    List<Comment> comments,
+    String commentId,
+    String userId,
+    bool isUpvote,
+  ) {
+    return comments.map((comment) {
+      if (comment.id == commentId) {
+        if (isUpvote) {
+          if (comment.upvotedBy.contains(userId)) return comment;
+          final newUpvotedBy = Set<String>.from(comment.upvotedBy)..add(userId);
+          final newDownvotedBy = Set<String>.from(comment.downvotedBy)
+            ..remove(userId);
+          return comment.copyWith(
+            upvotes: comment.upvotes + 1,
+            downvotes: comment.downvotedBy.contains(userId)
+                ? comment.downvotes - 1
+                : comment.downvotes,
+            upvotedBy: newUpvotedBy,
+            downvotedBy: newDownvotedBy,
+          );
+        } else {
+          if (comment.downvotedBy.contains(userId)) return comment;
+          final newDownvotedBy = Set<String>.from(comment.downvotedBy)
+            ..add(userId);
+          final newUpvotedBy = Set<String>.from(comment.upvotedBy)
+            ..remove(userId);
+          return comment.copyWith(
+            downvotes: comment.downvotes + 1,
+            upvotes: comment.upvotedBy.contains(userId)
+                ? comment.upvotes - 1
+                : comment.upvotes,
+            upvotedBy: newUpvotedBy,
+            downvotedBy: newDownvotedBy,
+          );
+        }
+      }
+      // Check replies recursively
+      if (comment.replies.isNotEmpty) {
+        return comment.copyWith(
+          replies: _updateCommentVote(
+            comment.replies,
+            commentId,
+            userId,
+            isUpvote,
+          ),
+        );
+      }
+      return comment;
+    }).toList();
+  }
+
+  void addReply(String postId, String parentCommentId, String text) {
+    if (text.trim().isEmpty) return;
+    final newReply = Comment(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      text: text,
+      author: 'You',
+      avatarEmoji: '🧑',
+      createdAt: DateTime.now(),
+      parentId: parentCommentId,
+    );
+    state = state.copyWith(
+      posts: state.posts.map((post) {
+        if (post.id == postId) {
+          return post.copyWith(
+            comments: _addReplyToComment(
+              post.comments,
+              parentCommentId,
+              newReply,
+            ),
+            commentCount: post.commentCount + 1,
+          );
+        }
+        return post;
+      }).toList(),
+    );
+  }
+
+  List<Comment> _addReplyToComment(
+    List<Comment> comments,
+    String parentId,
+    Comment reply,
+  ) {
+    return comments.map((comment) {
+      if (comment.id == parentId) {
+        return comment.copyWith(replies: [...comment.replies, reply]);
+      }
+      if (comment.replies.isNotEmpty) {
+        return comment.copyWith(
+          replies: _addReplyToComment(comment.replies, parentId, reply),
+        );
+      }
+      return comment;
+    }).toList();
+  }
+
   void addComment(String postId, String text) {
     if (text.trim().isEmpty) return;
     final newComment = Comment(
@@ -252,7 +430,6 @@ class ForumController extends Notifier<ForumState> {
       text: text,
       author: 'You',
       avatarEmoji: '🧑',
-      votes: 0,
       createdAt: DateTime.now(),
     );
     state = state.copyWith(

@@ -15,13 +15,47 @@ class PostDetailScreen extends ConsumerStatefulWidget {
 
 class _PostDetailScreenState extends ConsumerState<PostDetailScreen> {
   final _commentController = TextEditingController();
+  String? _replyingToCommentId;
+  String? _replyingToAuthor;
 
   void _submitComment() {
     if (_commentController.text.trim().isEmpty) return;
-    ref
-        .read(forumProvider.notifier)
-        .addComment(widget.postId, _commentController.text);
+
+    if (_replyingToCommentId != null) {
+      ref
+          .read(forumProvider.notifier)
+          .addReply(
+            widget.postId,
+            _replyingToCommentId!,
+            _commentController.text,
+          );
+    } else {
+      ref
+          .read(forumProvider.notifier)
+          .addComment(widget.postId, _commentController.text);
+    }
+
     _commentController.clear();
+    setState(() {
+      _replyingToCommentId = null;
+      _replyingToAuthor = null;
+    });
+  }
+
+  void _startReply(String commentId, String author) {
+    setState(() {
+      _replyingToCommentId = commentId;
+      _replyingToAuthor = author;
+    });
+    // Focus the text field
+    FocusScope.of(context).requestFocus(FocusNode());
+  }
+
+  void _cancelReply() {
+    setState(() {
+      _replyingToCommentId = null;
+      _replyingToAuthor = null;
+    });
   }
 
   @override
@@ -199,80 +233,7 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen> {
             ...post.comments.asMap().entries.map((entry) {
               final index = entry.key;
               final comment = entry.value;
-              return Container(
-                margin: const EdgeInsets.only(bottom: 16),
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppTheme.cardColor,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Text(
-                          comment.avatarEmoji,
-                          style: const TextStyle(fontSize: 16),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          comment.author,
-                          style: TextStyle(
-                            color: AppTheme.primaryCyan,
-                            fontSize: 12,
-                          ),
-                        ),
-                        const Spacer(),
-                        Text(
-                          '${index + 1}h ago',
-                          style: TextStyle(
-                            color: AppTheme.textGrey,
-                            fontSize: 10,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      comment.text,
-                      style: const TextStyle(color: Colors.white70),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.arrow_upward,
-                          size: 14,
-                          color: Colors.grey,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${comment.votes}',
-                          style: TextStyle(
-                            color: AppTheme.textGrey,
-                            fontSize: 12,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        const Icon(
-                          Icons.arrow_downward,
-                          size: 14,
-                          color: Colors.grey,
-                        ),
-                        const SizedBox(width: 16),
-                        Text(
-                          'Reply',
-                          style: TextStyle(
-                            color: AppTheme.primaryCyan,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ).animate().fadeIn(delay: (300 + index * 100).ms);
+              return _buildCommentWidget(comment, controller, userId, index, 0);
             }),
           ],
         ),
@@ -283,36 +244,203 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen> {
           color: AppTheme.cardColor,
           border: Border(top: BorderSide(color: Colors.white.withOpacity(0.1))),
         ),
-        child: Row(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Expanded(
-              child: TextField(
-                controller: _commentController,
-                style: const TextStyle(color: Colors.white),
-                decoration: InputDecoration(
-                  hintText: 'Add a comment...',
-                  hintStyle: TextStyle(color: AppTheme.textGrey),
-                  filled: true,
-                  fillColor: Colors.black.withOpacity(0.3),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(24),
-                    borderSide: BorderSide.none,
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
+            if (_replyingToAuthor != null)
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                margin: const EdgeInsets.only(bottom: 8),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryCyan.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    Text(
+                      'Replying to @$_replyingToAuthor',
+                      style: TextStyle(
+                        color: AppTheme.primaryCyan,
+                        fontSize: 12,
+                      ),
+                    ),
+                    const Spacer(),
+                    GestureDetector(
+                      onTap: _cancelReply,
+                      child: const Icon(
+                        Icons.close,
+                        size: 16,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _commentController,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
+                      hintText: _replyingToAuthor != null
+                          ? 'Write a reply...'
+                          : 'Add a comment...',
+                      hintStyle: TextStyle(color: AppTheme.textGrey),
+                      filled: true,
+                      fillColor: Colors.black.withOpacity(0.3),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(24),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                    ),
+                    onSubmitted: (_) => _submitComment(),
                   ),
                 ),
-                onSubmitted: (_) => _submitComment(),
-              ),
-            ),
-            const SizedBox(width: 12),
-            IconButton(
-              icon: const Icon(Icons.send, color: AppTheme.primaryCyan),
-              onPressed: _submitComment,
+                const SizedBox(width: 12),
+                IconButton(
+                  icon: const Icon(Icons.send, color: AppTheme.primaryCyan),
+                  onPressed: _submitComment,
+                ),
+              ],
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildCommentWidget(
+    Comment comment,
+    ForumController controller,
+    String userId,
+    int index,
+    int depth,
+  ) {
+    final hasUpvoted = comment.upvotedBy.contains(userId);
+    final hasDownvoted = comment.downvotedBy.contains(userId);
+    final karma = comment.upvotes - comment.downvotes;
+
+    return Padding(
+      padding: EdgeInsets.only(left: depth * 16.0),
+      child: Column(
+        children: [
+          Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: depth > 0
+                  ? AppTheme.cardColor.withOpacity(0.5)
+                  : AppTheme.cardColor,
+              borderRadius: BorderRadius.circular(12),
+              border: depth > 0
+                  ? Border(
+                      left: BorderSide(
+                        color: AppTheme.primaryCyan.withOpacity(0.3),
+                        width: 2,
+                      ),
+                    )
+                  : null,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      comment.avatarEmoji,
+                      style: const TextStyle(fontSize: 16),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      comment.author,
+                      style: TextStyle(
+                        color: AppTheme.primaryCyan,
+                        fontSize: 12,
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      '${index + 1}h ago',
+                      style: TextStyle(color: AppTheme.textGrey, fontSize: 10),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  comment.text,
+                  style: const TextStyle(color: Colors.white70),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () =>
+                          controller.upvoteComment(widget.postId, comment.id),
+                      child: Icon(
+                        Icons.arrow_upward,
+                        size: 14,
+                        color: hasUpvoted ? AppTheme.primaryCyan : Colors.grey,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      karma.toString(),
+                      style: TextStyle(
+                        color: hasUpvoted
+                            ? AppTheme.primaryCyan
+                            : hasDownvoted
+                            ? Colors.red
+                            : AppTheme.textGrey,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    GestureDetector(
+                      onTap: () =>
+                          controller.downvoteComment(widget.postId, comment.id),
+                      child: Icon(
+                        Icons.arrow_downward,
+                        size: 14,
+                        color: hasDownvoted ? Colors.red : Colors.grey,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    GestureDetector(
+                      onTap: () => _startReply(comment.id, comment.author),
+                      child: Text(
+                        'Reply',
+                        style: TextStyle(
+                          color: AppTheme.primaryCyan,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ).animate().fadeIn(delay: (300 + index * 100).ms),
+          // Render replies
+          if (comment.replies.isNotEmpty)
+            ...comment.replies.asMap().entries.map((entry) {
+              return _buildCommentWidget(
+                entry.value,
+                controller,
+                userId,
+                entry.key,
+                depth + 1,
+              );
+            }),
+        ],
       ),
     );
   }
