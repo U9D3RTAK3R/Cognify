@@ -21,6 +21,16 @@ class _PostDetailScreenState extends ConsumerState<PostDetailScreen> {
   String? _replyingToCommentId;
   String? _replyingToAuthor;
 
+  @override
+  void initState() {
+    super.initState();
+    // Fetch comments for this post from backend and increment view count
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(forumProvider.notifier).fetchCommentsForPost(widget.postId);
+      ref.read(forumProvider.notifier).incrementViewCount(widget.postId);
+    });
+  }
+
   void _submitComment() {
     if (_commentController.text.trim().isEmpty) return;
 

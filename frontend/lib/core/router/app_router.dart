@@ -1,5 +1,6 @@
 ﻿import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/auth_state.dart';
 import '../../features/splash/splash_screen.dart';
 import '../../features/onboarding/onboarding_screen.dart';
 import '../../features/auth/login_screen.dart';
@@ -19,6 +20,7 @@ import '../../features/profile/screens/settings_screen.dart';
 import '../../features/profile/screens/help_support_screen.dart';
 import '../../features/profile/screens/privacy_policy_screen.dart';
 import '../../features/profile/screens/service_agent_chat_screen.dart';
+import '../../features/leaderboard/leaderboard_screen.dart';
 import '../../shared/widgets/scaffold_with_nav_bar.dart';
 
 // Instructor Imports
@@ -35,9 +37,68 @@ import '../../features/instructor/profile/instructor_edit_profile_screen.dart';
 import '../../features/instructor/forum/instructor_forum_screen.dart';
 import '../../features/instructor/certificates/certificate_history_screen.dart';
 
+/// Routes that do NOT require authentication
+const _publicRoutes = [
+  '/splash',
+  '/onboarding',
+  '/login',
+  '/signup',
+  '/otp-verification',
+  '/instructor/login',
+  '/instructor/signup',
+];
+
 final routerProvider = Provider<GoRouter>((ref) {
+  final authState = ref.watch(authProvider);
+
   return GoRouter(
     initialLocation: '/splash',
+    redirect: (context, state) {
+      final isLoggedIn = authState.isLoggedIn;
+      final isLoading = authState.isLoading;
+      final currentPath = state.matchedLocation;
+
+      // While loading auth state, stay on splash
+      if (isLoading && currentPath != '/splash') {
+        return null; // Don't redirect during loading
+      }
+
+      // If logged in and on splash, go to dashboard immediately (skip 2.5s wait)
+      if (isLoggedIn && currentPath == '/splash') {
+        if (authState.token != null) {
+          // Double check token valid?
+          // Optional: check role?
+          // But main dashboard is default.
+          return '/dashboard';
+        }
+      }
+
+      // Check if the current route is public
+      final isPublicRoute = _publicRoutes.any(
+        (route) => currentPath.startsWith(route),
+      );
+
+      // If not logged in and trying to access a protected route, redirect to login
+      if (!isLoggedIn && !isPublicRoute) {
+        // Check if it's an instructor protected route
+        if (currentPath.startsWith('/instructor')) {
+          return '/instructor/login';
+        }
+        return '/login';
+      }
+
+      // If logged in and trying to access login/signup, redirect to dashboard
+      if (isLoggedIn && (currentPath == '/login' || currentPath == '/signup')) {
+        return '/dashboard';
+      }
+      if (isLoggedIn &&
+          (currentPath == '/instructor/login' ||
+              currentPath == '/instructor/signup')) {
+        return '/instructor/dashboard';
+      }
+
+      return null; // No redirect needed
+    },
     routes: [
       GoRoute(
         path: '/splash',
@@ -55,11 +116,14 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/otp-verification',
         builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>? ?? {};
           final email =
-              state.extra as String? ??
+              extra['email'] as String? ??
               state.uri.queryParameters['email'] ??
               '';
-          return OtpVerificationScreen(email: email);
+          final password = extra['password'] as String? ?? '';
+
+          return OtpVerificationScreen(email: email, password: password);
         },
       ),
       GoRoute(
@@ -84,6 +148,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/ai-chat',
         builder: (context, state) => const AiChatScreen(),
+      ),
+      GoRoute(
+        path: '/leaderboard',
+        builder: (context, state) => const LeaderboardScreen(),
       ),
       GoRoute(
         path: '/battle',

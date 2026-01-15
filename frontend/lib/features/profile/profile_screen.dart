@@ -4,6 +4,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/providers/user_state.dart';
+import '../../core/providers/gamification_state.dart';
+import '../../core/providers/auth_state.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -12,7 +14,9 @@ class ProfileScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final userState = ref.watch(userStateProvider);
     final profile = userState.profile;
-    final stats = userState.stats;
+    final gamification = ref.watch(gamificationProvider);
+    final stats = gamification.userStats;
+    final achievements = gamification.achievements;
 
     return Scaffold(
       backgroundColor: AppTheme.bgBlack,
@@ -73,7 +77,7 @@ class ProfileScreen extends ConsumerWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
                       _statItem("Level", stats.level.toString()),
-                      _statItem("XP", "${stats.currentXp}/${stats.maxXp}"),
+                      _statItem("XP", "${stats.totalXp}"),
                       _statItem("Rank", "#${stats.globalRank}"),
                     ],
                   ),
@@ -107,16 +111,29 @@ class ProfileScreen extends ConsumerWidget {
             _sectionTitle("ACHIEVEMENTS"),
             const SizedBox(height: 12),
             SizedBox(
-              height: 100,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                children: [
-                  _achievementBadge("🏆", "First Win", Colors.amber),
-                  _achievementBadge("🔥", "7 Day Streak", Colors.orange),
-                  _achievementBadge("⚡", "Speed Demon", AppTheme.primaryCyan),
-                  _achievementBadge("🎯", "Perfect Score", Colors.green),
-                ],
-              ),
+              height: 110,
+              child: achievements.isEmpty
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                        color: AppTheme.primaryCyan,
+                      ),
+                    )
+                  : ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: achievements.length,
+                      itemBuilder: (context, index) {
+                        final achievement = achievements[index];
+                        return _achievementBadge(
+                          achievement.emoji,
+                          achievement.name,
+                          achievement.isUnlocked
+                              ? _getAchievementColor(achievement.category)
+                              : Colors.grey,
+                          isLocked: !achievement.isUnlocked,
+                          requirement: achievement.requirement,
+                        );
+                      },
+                    ),
             ),
 
             const SizedBox(height: 24),
@@ -138,7 +155,7 @@ class ProfileScreen extends ConsumerWidget {
                 Expanded(
                   child: _statCard(
                     "Courses",
-                    stats.courses.toString(),
+                    stats.coursesCompleted.toString(),
                     Icons.book,
                     AppTheme.accentPurple,
                   ),
@@ -151,7 +168,7 @@ class ProfileScreen extends ConsumerWidget {
                 Expanded(
                   child: _statCard(
                     "Streak",
-                    "${stats.streak} days",
+                    "${stats.currentStreak} days",
                     Icons.local_fire_department,
                     Colors.orange,
                   ),
@@ -160,7 +177,7 @@ class ProfileScreen extends ConsumerWidget {
                 Expanded(
                   child: _statCard(
                     "Total XP",
-                    "${stats.currentXp + (stats.level - 1) * 1000}",
+                    stats.totalXp.toString(),
                     Icons.bolt,
                     Colors.green,
                   ),
@@ -193,7 +210,7 @@ class ProfileScreen extends ConsumerWidget {
             // Logout Button - Redesigned
             const SizedBox(height: 8),
             GestureDetector(
-              onTap: () => _showLogoutDialog(context),
+              onTap: () => _showLogoutDialog(context, ref),
               child: Container(
                 margin: const EdgeInsets.only(bottom: 12),
                 padding: const EdgeInsets.all(16),
@@ -235,7 +252,7 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
-  void _showLogoutDialog(BuildContext context) {
+  void _showLogoutDialog(BuildContext context, WidgetRef ref) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -254,7 +271,8 @@ class ProfileScreen extends ConsumerWidget {
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              context.go('/login');
+              ref.read(authProvider.notifier).logout();
+              // context.go('/login'); // Router will handle redirect
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,
@@ -291,26 +309,79 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
-  Widget _achievementBadge(String emoji, String label, Color color) {
-    return Container(
-      width: 80,
-      margin: const EdgeInsets.only(right: 12),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withOpacity(0.3)),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(emoji, style: const TextStyle(fontSize: 28)),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(color: color, fontSize: 10),
-            textAlign: TextAlign.center,
-          ),
-        ],
+  Color _getAchievementColor(String category) {
+    switch (category) {
+      case 'battles':
+        return Colors.amber;
+      case 'learning':
+        return Colors.orange;
+      case 'courses':
+        return Colors.green;
+      case 'social':
+        return AppTheme.accentPurple;
+      default:
+        return AppTheme.primaryCyan;
+    }
+  }
+
+  Widget _achievementBadge(
+    String emoji,
+    String label,
+    Color color, {
+    bool isLocked = false,
+    String requirement = '',
+  }) {
+    return Tooltip(
+      message: isLocked ? 'Locked: $requirement' : 'Unlocked!',
+      child: Container(
+        width: 85,
+        margin: const EdgeInsets.only(right: 12),
+        decoration: BoxDecoration(
+          color: color.withOpacity(isLocked ? 0.05 : 0.15),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withOpacity(isLocked ? 0.2 : 0.4)),
+        ),
+        child: Stack(
+          children: [
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  emoji,
+                  style: TextStyle(
+                    fontSize: 28,
+                    color: isLocked ? Colors.grey : null,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                      color: isLocked ? Colors.grey : color,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+            if (isLocked)
+              Positioned(
+                top: 4,
+                right: 4,
+                child: Icon(
+                  Icons.lock,
+                  size: 14,
+                  color: Colors.grey.withOpacity(0.7),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

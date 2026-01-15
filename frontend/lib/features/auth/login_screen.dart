@@ -172,6 +172,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                             await ApiService.post('/api/login', {
                                               'email': _emailController.text
                                                   .trim(),
+                                              'password':
+                                                  _passwordController.text,
                                               'role':
                                                   'student', // Default to student
                                             });
@@ -179,8 +181,12 @@ class _LoginScreenState extends State<LoginScreen> {
                                             if (mounted) {
                                               context.go(
                                                 '/otp-verification',
-                                                extra: _emailController.text
-                                                    .trim(),
+                                                extra: {
+                                                  'email': _emailController.text
+                                                      .trim(),
+                                                  'password':
+                                                      _passwordController.text,
+                                                },
                                               );
                                             }
                                           } catch (e) {

@@ -1,4 +1,6 @@
 ﻿import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../../core/services/forum_service.dart';
 
 class ForumPost {
   final String id;
@@ -9,6 +11,7 @@ class ForumPost {
   final int upvotes;
   final int downvotes;
   final int commentCount;
+  final int viewCount;
   final DateTime createdAt;
   final List<Comment> comments;
   final List<String> tags;
@@ -24,6 +27,7 @@ class ForumPost {
     required this.upvotes,
     required this.downvotes,
     required this.commentCount,
+    this.viewCount = 0,
     required this.createdAt,
     this.comments = const [],
     this.tags = const [],
@@ -32,10 +36,36 @@ class ForumPost {
   }) : upvotedBy = upvotedBy ?? {},
        downvotedBy = downvotedBy ?? {};
 
+  factory ForumPost.fromJson(Map<String, dynamic> json) {
+    return ForumPost(
+      id: json['id'] ?? json['ID'] ?? '',
+      title: json['title'] ?? json['Title'] ?? '',
+      content: json['content'] ?? json['Content'] ?? '',
+      author: json['authorName'] ?? json['AuthorName'] ?? 'Unknown',
+      avatarEmoji: json['avatarEmoji'] ?? json['AvatarEmoji'] ?? '🧑',
+      upvotes: json['upvotes'] ?? json['Upvotes'] ?? 0,
+      downvotes: json['downvotes'] ?? json['Downvotes'] ?? 0,
+      commentCount: json['commentCount'] ?? json['CommentCount'] ?? 0,
+      viewCount: json['viewCount'] ?? json['ViewCount'] ?? 0,
+      createdAt: json['createdAt'] != null
+          ? DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now()
+          : (json['CreatedAt'] != null
+                ? DateTime.tryParse(json['CreatedAt'].toString()) ??
+                      DateTime.now()
+                : DateTime.now()),
+      tags: List<String>.from(json['tags'] ?? json['Tags'] ?? []),
+      upvotedBy: Set<String>.from(json['upvotedBy'] ?? json['UpvotedBy'] ?? []),
+      downvotedBy: Set<String>.from(
+        json['downvotedBy'] ?? json['DownvotedBy'] ?? [],
+      ),
+    );
+  }
+
   ForumPost copyWith({
     int? upvotes,
     int? downvotes,
     int? commentCount,
+    int? viewCount,
     List<Comment>? comments,
     List<String>? tags,
     Set<String>? upvotedBy,
@@ -50,6 +80,7 @@ class ForumPost {
       upvotes: upvotes ?? this.upvotes,
       downvotes: downvotes ?? this.downvotes,
       commentCount: commentCount ?? this.commentCount,
+      viewCount: viewCount ?? this.viewCount,
       createdAt: createdAt,
       comments: comments ?? this.comments,
       tags: tags ?? this.tags,
@@ -90,6 +121,27 @@ class Comment {
   }) : upvotedBy = upvotedBy ?? {},
        downvotedBy = downvotedBy ?? {};
 
+  factory Comment.fromJson(Map<String, dynamic> json) {
+    return Comment(
+      id: json['id'] ?? json['ID'] ?? '',
+      text: json['content'] ?? json['Content'] ?? '',
+      author: json['authorName'] ?? json['AuthorName'] ?? 'Unknown',
+      avatarEmoji: json['avatarEmoji'] ?? json['AvatarEmoji'] ?? '🧑',
+      upvotes: json['upvotes'] ?? json['Upvotes'] ?? 0,
+      downvotes: json['downvotes'] ?? json['Downvotes'] ?? 0,
+      createdAt: json['createdAt'] != null
+          ? DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now()
+          : (json['CreatedAt'] != null
+                ? DateTime.tryParse(json['CreatedAt'].toString()) ??
+                      DateTime.now()
+                : DateTime.now()),
+      upvotedBy: Set<String>.from(json['upvotedBy'] ?? json['UpvotedBy'] ?? []),
+      downvotedBy: Set<String>.from(
+        json['downvotedBy'] ?? json['DownvotedBy'] ?? [],
+      ),
+    );
+  }
+
   // Legacy getter for backwards compatibility
   int get votes => upvotes - downvotes;
 
@@ -122,24 +174,32 @@ class ForumState {
   final String sortBy;
   final String currentUserId;
   final Set<String> savedPostIds;
+  final bool isLoading;
+  final String? error;
 
   ForumState({
     required this.posts,
     this.sortBy = 'hot',
     this.currentUserId = 'currentUser',
     Set<String>? savedPostIds,
+    this.isLoading = false,
+    this.error,
   }) : savedPostIds = savedPostIds ?? {};
 
   ForumState copyWith({
     List<ForumPost>? posts,
     String? sortBy,
     Set<String>? savedPostIds,
+    bool? isLoading,
+    String? error,
   }) {
     return ForumState(
       posts: posts ?? this.posts,
       sortBy: sortBy ?? this.sortBy,
       currentUserId: currentUserId,
       savedPostIds: savedPostIds ?? this.savedPostIds,
+      isLoading: isLoading ?? this.isLoading,
+      error: error,
     );
   }
 }
@@ -147,113 +207,83 @@ class ForumState {
 class ForumController extends Notifier<ForumState> {
   @override
   ForumState build() {
-    return ForumState(
-      posts: [
-        ForumPost(
-          id: '1',
-          title: 'How do I manage state in Flutter?',
-          content:
-              'I am new to Flutter and confused about state management. Should I use Provider, Riverpod, or Bloc? What are the pros and cons of each?',
-          author: 'FlutterNewbie',
-          avatarEmoji: '🐣',
-          upvotes: 42,
-          downvotes: 3,
-          commentCount: 3,
-          createdAt: DateTime.now().subtract(const Duration(hours: 2)),
-          tags: ['flutter', 'state-management', 'beginner'],
-          comments: [
-            Comment(
-              id: 'c1',
-              text: 'Great question! I recommend starting with Riverpod.',
-              author: 'DevMaster',
-              avatarEmoji: '🧑‍💻',
-              upvotes: 15,
-              downvotes: 0,
-              createdAt: DateTime.now().subtract(const Duration(hours: 1)),
-            ),
-            Comment(
-              id: 'c2',
-              text: 'Provider is simpler for beginners.',
-              author: 'StudentPro',
-              avatarEmoji: '👩‍🎓',
-              upvotes: 8,
-              downvotes: 0,
-              createdAt: DateTime.now().subtract(const Duration(minutes: 45)),
-            ),
-            Comment(
-              id: 'c3',
-              text: 'Bloc is great for complex apps!',
-              author: 'CodeBot',
-              avatarEmoji: '🤖',
-              upvotes: 5,
-              downvotes: 0,
-              createdAt: DateTime.now().subtract(const Duration(minutes: 30)),
-            ),
-          ],
-        ),
-        ForumPost(
-          id: '2',
-          title: 'Tips for passing the Flutter certification?',
-          content:
-              'Has anyone taken the Flutter certification exam? Looking for study tips and resources.',
-          author: 'CertSeeker',
-          avatarEmoji: '📚',
-          upvotes: 89,
-          downvotes: 5,
-          commentCount: 2,
-          createdAt: DateTime.now().subtract(const Duration(hours: 5)),
-          tags: ['certification', 'career', 'tips'],
-          comments: [
-            Comment(
-              id: 'c4',
-              text: 'Practice with the official codelabs!',
-              author: 'CertifiedDev',
-              avatarEmoji: '🏆',
-              upvotes: 20,
-              downvotes: 0,
-              createdAt: DateTime.now().subtract(const Duration(hours: 4)),
-            ),
-            Comment(
-              id: 'c5',
-              text: 'Focus on widget lifecycles.',
-              author: 'FlutterPro',
-              avatarEmoji: '💎',
-              upvotes: 12,
-              downvotes: 0,
-              createdAt: DateTime.now().subtract(const Duration(hours: 3)),
-            ),
-          ],
-        ),
-        ForumPost(
-          id: '3',
-          title: 'Best practices for animations',
-          content:
-              'What are the best practices for creating smooth animations in Flutter? Any performance tips?',
-          author: 'AnimationPro',
-          avatarEmoji: '✨',
-          upvotes: 127,
-          downvotes: 8,
-          commentCount: 1,
-          createdAt: DateTime.now().subtract(const Duration(days: 1)),
-          tags: ['animations', 'performance', 'advanced'],
-          comments: [
-            Comment(
-              id: 'c6',
-              text: 'Use AnimatedBuilder for better performance!',
-              author: 'PerfGuru',
-              avatarEmoji: '⚡',
-              upvotes: 25,
-              downvotes: 0,
-              createdAt: DateTime.now().subtract(const Duration(hours: 20)),
-            ),
-          ],
-        ),
-      ],
+    // Fetch posts and saved post IDs on initialization
+    _fetchPosts();
+    _loadSavedPostIds();
+    return ForumState(posts: [], isLoading: true);
+  }
+
+  Future<void> _loadSavedPostIds() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedList = prefs.getStringList('saved_post_ids') ?? [];
+    state = state.copyWith(savedPostIds: Set<String>.from(savedList));
+  }
+
+  Future<void> _saveSavedPostIds() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList('saved_post_ids', state.savedPostIds.toList());
+  }
+
+  Future<void> _fetchPosts() async {
+    try {
+      final postsData = await ForumService.fetchPosts();
+      final posts = postsData.map((data) => ForumPost.fromJson(data)).toList();
+      state = state.copyWith(posts: posts, isLoading: false, error: null);
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: e.toString());
+    }
+  }
+
+  Future<void> refreshPosts() async {
+    state = state.copyWith(isLoading: true);
+    await _fetchPosts();
+  }
+
+  /// Fetches comments for a specific post from backend and updates state.
+  Future<void> fetchCommentsForPost(String postId) async {
+    try {
+      final commentsData = await ForumService.fetchComments(postId: postId);
+      final comments = commentsData
+          .map((data) => Comment.fromJson(data))
+          .toList();
+
+      state = state.copyWith(
+        posts: state.posts.map((p) {
+          if (p.id == postId) {
+            return p.copyWith(
+              comments: comments,
+              commentCount: comments.length,
+            );
+          }
+          return p;
+        }).toList(),
+      );
+    } catch (e) {
+      // Silently fail - comments will just be empty
+      print('Error fetching comments: $e');
+    }
+  }
+
+  /// Increments view count for a post via backend API.
+  Future<void> incrementViewCount(String postId) async {
+    // Call API in background
+    await ForumService.incrementViewCount(postId: postId);
+
+    // Update local state
+    state = state.copyWith(
+      posts: state.posts.map((p) {
+        if (p.id == postId) {
+          return p.copyWith(viewCount: p.viewCount + 1);
+        }
+        return p;
+      }).toList(),
     );
   }
 
-  void upvote(String postId) {
+  Future<void> upvote(String postId) async {
     final userId = state.currentUserId;
+
+    // Optimistic update
     state = state.copyWith(
       posts: state.posts.map((p) {
         if (p.id == postId) {
@@ -273,10 +303,15 @@ class ForumController extends Notifier<ForumState> {
         return p;
       }).toList(),
     );
+
+    // Call API in background
+    await ForumService.votePost(postId: postId, userId: userId, voteType: 'up');
   }
 
-  void downvote(String postId) {
+  Future<void> downvote(String postId) async {
     final userId = state.currentUserId;
+
+    // Optimistic update
     state = state.copyWith(
       posts: state.posts.map((p) {
         if (p.id == postId) {
@@ -293,10 +328,19 @@ class ForumController extends Notifier<ForumState> {
         return p;
       }).toList(),
     );
+
+    // Call API in background
+    await ForumService.votePost(
+      postId: postId,
+      userId: userId,
+      voteType: 'down',
+    );
   }
 
-  void upvoteComment(String postId, String commentId) {
+  Future<void> upvoteComment(String postId, String commentId) async {
     final userId = state.currentUserId;
+
+    // Optimistic update
     state = state.copyWith(
       posts: state.posts.map((post) {
         if (post.id == postId) {
@@ -312,10 +356,19 @@ class ForumController extends Notifier<ForumState> {
         return post;
       }).toList(),
     );
+
+    // Call API in background
+    await ForumService.voteComment(
+      commentId: commentId,
+      userId: userId,
+      voteType: 'up',
+    );
   }
 
-  void downvoteComment(String postId, String commentId) {
+  Future<void> downvoteComment(String postId, String commentId) async {
     final userId = state.currentUserId;
+
+    // Optimistic update
     state = state.copyWith(
       posts: state.posts.map((post) {
         if (post.id == postId) {
@@ -330,6 +383,13 @@ class ForumController extends Notifier<ForumState> {
         }
         return post;
       }).toList(),
+    );
+
+    // Call API in background
+    await ForumService.voteComment(
+      commentId: commentId,
+      userId: userId,
+      voteType: 'down',
     );
   }
 
@@ -385,13 +445,14 @@ class ForumController extends Notifier<ForumState> {
     }).toList();
   }
 
-  void addReply(
+  Future<void> addReply(
     String postId,
     String parentCommentId,
     String text, {
     String? authorName,
     String? authorEmoji,
-  }) {
+    String? authorId,
+  }) async {
     if (text.trim().isEmpty) return;
     final newReply = Comment(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -401,6 +462,8 @@ class ForumController extends Notifier<ForumState> {
       createdAt: DateTime.now(),
       parentId: parentCommentId,
     );
+
+    // Optimistic update
     state = state.copyWith(
       posts: state.posts.map((post) {
         if (post.id == postId) {
@@ -415,6 +478,15 @@ class ForumController extends Notifier<ForumState> {
         }
         return post;
       }).toList(),
+    );
+
+    // Call API in background (using comment API since replies are just nested comments)
+    await ForumService.addComment(
+      postId: postId,
+      authorId: authorId ?? state.currentUserId,
+      authorName: authorName ?? 'You',
+      avatarEmoji: authorEmoji ?? '🧑',
+      content: text,
     );
   }
 
@@ -436,13 +508,15 @@ class ForumController extends Notifier<ForumState> {
     }).toList();
   }
 
-  void addComment(
+  Future<void> addComment(
     String postId,
     String text, {
     String? authorName,
     String? authorEmoji,
-  }) {
+    String? authorId,
+  }) async {
     if (text.trim().isEmpty) return;
+
     final newComment = Comment(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       text: text,
@@ -450,6 +524,8 @@ class ForumController extends Notifier<ForumState> {
       avatarEmoji: authorEmoji ?? '🧑',
       createdAt: DateTime.now(),
     );
+
+    // Optimistic update
     state = state.copyWith(
       posts: state.posts.map((p) {
         if (p.id == postId) {
@@ -461,16 +537,27 @@ class ForumController extends Notifier<ForumState> {
         return p;
       }).toList(),
     );
+
+    // Call API in background
+    await ForumService.addComment(
+      postId: postId,
+      authorId: authorId ?? state.currentUserId,
+      authorName: authorName ?? 'You',
+      avatarEmoji: authorEmoji ?? '🧑',
+      content: text,
+    );
   }
 
-  void addPost(
+  Future<void> addPost(
     String title,
     String content,
     List<String> tags, {
     String? authorName,
     String? authorEmoji,
-  }) {
-    final newPost = ForumPost(
+    String? authorId,
+  }) async {
+    // Optimistic local update
+    final tempPost = ForumPost(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       title: title,
       content: content,
@@ -482,7 +569,28 @@ class ForumController extends Notifier<ForumState> {
       createdAt: DateTime.now(),
       tags: tags,
     );
-    state = state.copyWith(posts: [newPost, ...state.posts]);
+    state = state.copyWith(posts: [tempPost, ...state.posts]);
+
+    // Call API
+    final result = await ForumService.createPost(
+      authorId: authorId ?? state.currentUserId,
+      authorName: authorName ?? 'You',
+      avatarEmoji: authorEmoji ?? '🧑',
+      title: title,
+      content: content,
+      tags: tags,
+    );
+
+    // If we got a real post back, replace the temp one
+    if (result != null) {
+      final realPost = ForumPost.fromJson(result);
+      state = state.copyWith(
+        posts: state.posts.map((p) {
+          if (p.id == tempPost.id) return realPost;
+          return p;
+        }).toList(),
+      );
+    }
   }
 
   void toggleSavePost(String postId) {
@@ -493,6 +601,7 @@ class ForumController extends Notifier<ForumState> {
       newSaved.add(postId);
     }
     state = state.copyWith(savedPostIds: newSaved);
+    _saveSavedPostIds(); // Persist to SharedPreferences
   }
 
   bool isPostSaved(String postId) => state.savedPostIds.contains(postId);

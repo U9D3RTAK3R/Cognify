@@ -79,6 +79,12 @@ func main() {
 
 		// Forum routes (public read)
 		r.Get("/posts", api.GetPostsHandler)
+		r.Get("/posts/comments", api.GetCommentsHandler)
+
+		// Gamification routes (public read)
+		r.Get("/achievements", api.GetAchievementsHandler)
+		r.Get("/leaderboard", api.GetLeaderboardHandler)
+		r.Post("/seed-data", api.SeedDataHandler) // Dev only - seeds test data
 
 		// Protected routes
 		r.Group(func(r chi.Router) {
@@ -91,6 +97,8 @@ func main() {
 			r.Post("/posts", api.CreatePostHandler)
 			r.Post("/posts/vote", api.VotePostHandler)
 			r.Post("/posts/comment", api.AddCommentHandler)
+			r.Post("/posts/comment/vote", api.VoteCommentHandler)
+			r.Post("/posts/view", api.IncrementViewHandler)
 
 			// AI routes (protected - login required)
 			r.Post("/ai/chat", api.ChatHandler)
@@ -100,6 +108,8 @@ func main() {
 
 			// User routes
 			r.Post("/update-profile", api.UpdateProfileHandler)
+			r.Get("/user/stats", api.GetUserStatsHandler)
+			r.Get("/user/achievements", api.GetUserAchievementsHandler)
 		})
 
 		// Instructor routes

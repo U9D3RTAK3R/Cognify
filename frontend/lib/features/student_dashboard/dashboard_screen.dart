@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/providers/gamification_state.dart';
 import '../../core/providers/user_state.dart';
 import 'data/mock_data.dart';
 import 'widgets/xp_bar.dart';
@@ -19,8 +20,10 @@ class DashboardScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final userState = ref.watch(userStateProvider);
     final profile = userState.profile;
-    final stats = userState.stats;
     final hasUnread = userState.notifications.any((n) => n.isUnread);
+
+    final gamification = ref.watch(gamificationProvider);
+    final stats = gamification.userStats;
 
     return Scaffold(
       backgroundColor: AppTheme.bgBlack,
@@ -45,57 +48,78 @@ class DashboardScreen extends ConsumerWidget {
                       Text(profile.name, style: AppTheme.headlineMedium),
                     ],
                   ),
-                  GestureDetector(
-                    onTap: () {
-                      showModalBottomSheet(
-                        context: context,
-                        backgroundColor: Colors.transparent,
-                        isScrollControlled: true,
-                        builder: (context) => DraggableScrollableSheet(
-                          initialChildSize: 0.6,
-                          minChildSize: 0.4,
-                          maxChildSize: 0.9,
-                          builder: (_, controller) =>
-                              const NotificationsSheet(),
-                        ),
-                      );
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AppTheme.cardColor,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Stack(
-                        children: [
-                          const Icon(
-                            Icons.notifications_outlined,
-                            color: Colors.white,
+                  Row(
+                    children: [
+                      // Leaderboard button
+                      GestureDetector(
+                        onTap: () => context.push('/leaderboard'),
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: AppTheme.cardColor,
+                            borderRadius: BorderRadius.circular(16),
                           ),
-                          if (hasUnread)
-                            Positioned(
-                              right: 0,
-                              top: 0,
-                              child: Container(
-                                width: 8,
-                                height: 8,
-                                decoration: const BoxDecoration(
-                                  color: Colors.red,
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                            ),
-                        ],
+                          child: const Icon(
+                            Icons.emoji_events_outlined,
+                            color: Colors.amber,
+                          ),
+                        ),
                       ),
-                    ),
+                      const SizedBox(width: 8),
+                      // Notifications button
+                      GestureDetector(
+                        onTap: () {
+                          showModalBottomSheet(
+                            context: context,
+                            backgroundColor: Colors.transparent,
+                            isScrollControlled: true,
+                            builder: (context) => DraggableScrollableSheet(
+                              initialChildSize: 0.6,
+                              minChildSize: 0.4,
+                              maxChildSize: 0.9,
+                              builder: (_, controller) =>
+                                  const NotificationsSheet(),
+                            ),
+                          );
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: AppTheme.cardColor,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Stack(
+                            children: [
+                              const Icon(
+                                Icons.notifications_outlined,
+                                color: Colors.white,
+                              ),
+                              if (hasUnread)
+                                Positioned(
+                                  right: 0,
+                                  top: 0,
+                                  child: Container(
+                                    width: 8,
+                                    height: 8,
+                                    decoration: const BoxDecoration(
+                                      color: Colors.red,
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ).animate().fadeIn().slideY(begin: -0.2, end: 0),
               const SizedBox(height: 24),
               XpBar(
                 level: stats.level,
-                currentXp: stats.currentXp,
-                maxXp: stats.maxXp,
+                currentXp: stats.totalXp % 1000,
+                maxXp: 1000,
                 rank: profile.name,
               ),
               const SizedBox(height: 24),

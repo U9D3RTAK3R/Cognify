@@ -1,34 +1,39 @@
 ﻿import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/providers/gamification_state.dart';
 
-class StatsGrid extends StatelessWidget {
+class StatsGrid extends ConsumerWidget {
   const StatsGrid({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final stats = [
+  Widget build(BuildContext context, WidgetRef ref) {
+    final gamification = ref.watch(gamificationProvider);
+    final stats = gamification.userStats;
+
+    final statItems = [
       {
         'icon': Icons.bolt,
-        'value': '2,450',
+        'value': stats.totalXp.toString(),
         'label': 'Total XP',
         'color': AppTheme.primaryCyan,
       },
       {
         'icon': Icons.emoji_events,
-        'value': '12',
+        'value': stats.battlesWon.toString(),
         'label': 'Battles Won',
         'color': AppTheme.accentPurple,
       },
       {
         'icon': Icons.local_fire_department,
-        'value': '7',
+        'value': stats.currentStreak.toString(),
         'label': 'Day Streak',
         'color': const Color(0xFFFF6B35),
       },
       {
         'icon': Icons.military_tech,
-        'value': '#42',
+        'value': '#${stats.globalRank}',
         'label': 'Global Rank',
         'color': const Color(0xFF00FF7F),
       },
@@ -50,9 +55,9 @@ class StatsGrid extends StatelessWidget {
             mainAxisSpacing: 12,
             childAspectRatio: childAspectRatio,
           ),
-          itemCount: stats.length,
+          itemCount: statItems.length,
           itemBuilder: (context, index) {
-            final stat = stats[index];
+            final stat = statItems[index];
             return Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(

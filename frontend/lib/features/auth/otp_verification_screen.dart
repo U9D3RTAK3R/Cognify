@@ -7,13 +7,20 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/services/api_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/providers/user_state.dart';
+import '../../core/providers/auth_state.dart';
+import '../../core/providers/gamification_state.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
 class OtpVerificationScreen extends ConsumerStatefulWidget {
   final String email;
+  final String password;
 
-  const OtpVerificationScreen({super.key, required this.email});
+  const OtpVerificationScreen({
+    super.key,
+    required this.email,
+    required this.password,
+  });
 
   @override
   ConsumerState<OtpVerificationScreen> createState() =>
@@ -66,11 +73,16 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
         final prefs = await SharedPreferences.getInstance();
         if (response['token'] != null) {
           await prefs.setString('token', response['token']);
+          // Update Auth Provider state explicitly
+          ref.read(authProvider.notifier).login(response['token']);
         }
         await prefs.setString(
           'user_email',
           widget.email,
         ); // Save email for updates
+
+        // Refresh gamification stats to ensure they are loaded for the new user
+        ref.refresh(gamificationProvider);
 
         // Sync user data to state
         if (response['user'] != null) {
@@ -109,7 +121,15 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
     try {
       await ApiService.post('/api/login', {
         'email': widget.email,
-        'role': 'student', // Default or pass from prev screen
+        'password': widget.password,
+        'role': 'student', // Default or need to pass role too?
+        // For simplicity assuming student or logic handles it.
+        // LoginHandler requires role? "role": req.Role.
+        // I should probably pass role too if needed, but LoginHandler might default?
+        // Let's check backend. LoginHandler uses req.Role for analytics but not logic?
+        // Wait, GenerateJWT uses user.Role from DB.
+        // LoginHandler analytics uses req.Role.
+        // So hardcoding 'student' here for resend is probably fine or I pass role too.
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

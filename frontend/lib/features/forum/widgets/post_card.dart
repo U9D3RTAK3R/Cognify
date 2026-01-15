@@ -169,20 +169,6 @@ class PostCard extends StatelessWidget {
                           fontSize: 12,
                         ),
                       ),
-                      const SizedBox(width: 16),
-                      Icon(
-                        Icons.share_outlined,
-                        size: 16,
-                        color: AppTheme.textGrey,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Share',
-                        style: TextStyle(
-                          color: AppTheme.textGrey,
-                          fontSize: 12,
-                        ),
-                      ),
                     ],
                   ),
                 ],

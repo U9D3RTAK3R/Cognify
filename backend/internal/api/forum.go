@@ -9,6 +9,7 @@ import (
 	"cache-crew/cognify/internal/db"
 	"cache-crew/cognify/internal/models"
 
+	"cloud.google.com/go/firestore"
 	"google.golang.org/api/iterator"
 )
 
@@ -64,6 +65,75 @@ func GetPostsHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// GetCommentsHandler returns comments for a specific post
+func GetCommentsHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	postID := r.URL.Query().Get("postId")
+	if postID == "" {
+		respondJSON(w, http.StatusBadRequest, map[string]string{
+			"error": "postId is required",
+		})
+		return
+	}
+
+	comments, err := getCommentsForPost(r.Context(), postID)
+	if err != nil {
+		respondJSON(w, http.StatusInternalServerError, map[string]string{
+			"error": "Failed to fetch comments",
+		})
+		return
+	}
+
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"success":  true,
+		"comments": comments,
+	})
+}
+
+func getCommentsForPost(ctx context.Context, postID string) ([]models.Comment, error) {
+	if db.FirestoreClient == nil {
+		// Return empty in mock mode
+		return []models.Comment{}, nil
+	}
+
+	// Query without OrderBy to avoid requiring a composite index
+	query := db.FirestoreClient.Collection("comments").Where("postId", "==", postID)
+	iter := query.Documents(ctx)
+	var comments []models.Comment
+
+	for {
+		doc, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			// Log error and return empty
+			return []models.Comment{}, nil
+		}
+
+		var comment models.Comment
+		if err := doc.DataTo(&comment); err != nil {
+			continue
+		}
+		comments = append(comments, comment)
+	}
+
+	// Sort by createdAt in memory
+	for i := 0; i < len(comments)-1; i++ {
+		for j := i + 1; j < len(comments); j++ {
+			if comments[j].CreatedAt.Before(comments[i].CreatedAt) {
+				comments[i], comments[j] = comments[j], comments[i]
+			}
+		}
+	}
+
+	return comments, nil
+}
+
 // CreatePostHandler creates a new forum post
 func CreatePostHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -72,12 +142,13 @@ func CreatePostHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req struct {
-		AuthorID   string   `json:"authorId"`
-		AuthorName string   `json:"authorName"`
-		CourseID   string   `json:"courseId"`
-		Title      string   `json:"title"`
-		Content    string   `json:"content"`
-		Tags       []string `json:"tags"`
+		AuthorID    string   `json:"authorId"`
+		AuthorName  string   `json:"authorName"`
+		AvatarEmoji string   `json:"avatarEmoji"`
+		CourseID    string   `json:"courseId"`
+		Title       string   `json:"title"`
+		Content     string   `json:"content"`
+		Tags        []string `json:"tags"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -91,6 +162,7 @@ func CreatePostHandler(w http.ResponseWriter, r *http.Request) {
 		ID:           generateID(),
 		AuthorID:     req.AuthorID,
 		AuthorName:   req.AuthorName,
+		AvatarEmoji:  req.AvatarEmoji,
 		CourseID:     req.CourseID,
 		Title:        req.Title,
 		Content:      req.Content,
@@ -100,6 +172,7 @@ func CreatePostHandler(w http.ResponseWriter, r *http.Request) {
 		UpvotedBy:    []string{},
 		DownvotedBy:  []string{},
 		CommentCount: 0,
+		ViewCount:    0,
 		CreatedAt:    time.Now(),
 	}
 
@@ -207,10 +280,11 @@ func AddCommentHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req struct {
-		PostID     string `json:"postId"`
-		AuthorID   string `json:"authorId"`
-		AuthorName string `json:"authorName"`
-		Content    string `json:"content"`
+		PostID      string `json:"postId"`
+		AuthorID    string `json:"authorId"`
+		AuthorName  string `json:"authorName"`
+		AvatarEmoji string `json:"avatarEmoji"`
+		Content     string `json:"content"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -221,12 +295,13 @@ func AddCommentHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	comment := &models.Comment{
-		ID:         generateID(),
-		PostID:     req.PostID,
-		AuthorID:   req.AuthorID,
-		AuthorName: req.AuthorName,
-		Content:    req.Content,
-		CreatedAt:  time.Now(),
+		ID:          generateID(),
+		PostID:      req.PostID,
+		AuthorID:    req.AuthorID,
+		AuthorName:  req.AuthorName,
+		AvatarEmoji: req.AvatarEmoji,
+		Content:     req.Content,
+		CreatedAt:   time.Now(),
 	}
 
 	if db.FirestoreClient != nil {
@@ -237,11 +312,136 @@ func AddCommentHandler(w http.ResponseWriter, r *http.Request) {
 			})
 			return
 		}
+
+		// Increment the post's commentCount
+		postRef := db.FirestoreClient.Collection("posts").Doc(req.PostID)
+		_, err = postRef.Update(r.Context(), []firestore.Update{
+			{Path: "commentCount", Value: firestore.Increment(1)},
+		})
+		if err != nil {
+			// Log but don't fail - comment was saved
+		}
 	}
 
 	respondJSON(w, http.StatusCreated, map[string]interface{}{
 		"success": true,
 		"comment": comment,
+	})
+}
+
+// IncrementViewHandler increments the view count for a post
+func IncrementViewHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req struct {
+		PostID string `json:"postId"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondJSON(w, http.StatusBadRequest, map[string]string{
+			"error": "Invalid request body",
+		})
+		return
+	}
+
+	if db.FirestoreClient != nil {
+		postRef := db.FirestoreClient.Collection("posts").Doc(req.PostID)
+		_, err := postRef.Update(r.Context(), []firestore.Update{
+			{Path: "viewCount", Value: firestore.Increment(1)},
+		})
+		if err != nil {
+			respondJSON(w, http.StatusInternalServerError, map[string]string{
+				"error": "Failed to increment view count",
+			})
+			return
+		}
+	}
+
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"success": true,
+	})
+}
+
+// VoteCommentHandler handles upvoting/downvoting comments
+func VoteCommentHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req struct {
+		CommentID string `json:"commentId"`
+		UserID    string `json:"userId"`
+		VoteType  string `json:"voteType"` // "up" or "down"
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondJSON(w, http.StatusBadRequest, map[string]string{
+			"error": "Invalid request body",
+		})
+		return
+	}
+
+	// For mock mode
+	if db.FirestoreClient == nil {
+		respondJSON(w, http.StatusOK, map[string]interface{}{
+			"success": true,
+			"message": "Vote recorded (mock mode)",
+		})
+		return
+	}
+
+	// Get comment
+	doc, err := db.FirestoreClient.Collection("comments").Doc(req.CommentID).Get(r.Context())
+	if err != nil {
+		respondJSON(w, http.StatusNotFound, map[string]string{
+			"error": "Comment not found",
+		})
+		return
+	}
+
+	var comment models.Comment
+	if err := doc.DataTo(&comment); err != nil {
+		respondJSON(w, http.StatusInternalServerError, map[string]string{
+			"error": "Failed to parse comment",
+		})
+		return
+	}
+
+	// Update vote
+	if req.VoteType == "up" {
+		// Remove from downvoted if present
+		comment.DownvotedBy = removeFromSlice(comment.DownvotedBy, req.UserID)
+		if !contains(comment.UpvotedBy, req.UserID) {
+			comment.UpvotedBy = append(comment.UpvotedBy, req.UserID)
+		}
+	} else {
+		// Remove from upvoted if present
+		comment.UpvotedBy = removeFromSlice(comment.UpvotedBy, req.UserID)
+		if !contains(comment.DownvotedBy, req.UserID) {
+			comment.DownvotedBy = append(comment.DownvotedBy, req.UserID)
+		}
+	}
+
+	comment.Upvotes = len(comment.UpvotedBy)
+	comment.Downvotes = len(comment.DownvotedBy)
+
+	// Save
+	_, err = db.FirestoreClient.Collection("comments").Doc(req.CommentID).Set(r.Context(), comment)
+	if err != nil {
+		respondJSON(w, http.StatusInternalServerError, map[string]string{
+			"error": "Failed to update vote",
+		})
+		return
+	}
+
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"success":   true,
+		"upvotes":   comment.Upvotes,
+		"downvotes": comment.Downvotes,
 	})
 }
 

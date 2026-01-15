@@ -247,13 +247,19 @@ class _SignupScreenState extends State<SignupScreen> {
                                     try {
                                       await ApiService.post('/api/signup', {
                                         'email': _emailController.text.trim(),
+                                        'password': _passwordController.text,
                                         'role': 'student',
                                         'name': _nameController.text.trim(),
                                       });
                                       if (mounted) {
                                         context.go(
                                           '/otp-verification',
-                                          extra: _emailController.text.trim(),
+                                          extra: {
+                                            'email': _emailController.text
+                                                .trim(),
+                                            'password':
+                                                _passwordController.text,
+                                          },
                                         );
                                       }
                                     } catch (e) {
