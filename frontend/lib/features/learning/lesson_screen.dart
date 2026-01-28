@@ -15,23 +15,38 @@ class CourseLevel {
   final String title;
   final String content;
   final String videoUrl;
-  final List<String> questionIds;
+  final List<BattleQuestion> questions;
 
   CourseLevel({
     required this.id,
     required this.title,
     required this.content,
     required this.videoUrl,
-    required this.questionIds,
+    required this.questions,
   });
 
   factory CourseLevel.fromJson(Map<String, dynamic> json) {
+    var parsedQuestions = <BattleQuestion>[];
+    if (json['questions'] != null) {
+      final list = json['questions'] as List;
+      parsedQuestions = list
+          .map((q) {
+            if (q is Map<String, dynamic>) {
+              return BattleQuestion.fromJson(q);
+            }
+            // Handle case where it might be a mix or just IDs (failed migration?)
+            return null;
+          })
+          .whereType<BattleQuestion>()
+          .toList();
+    }
+
     return CourseLevel(
       id: json['id'] ?? '',
       title: json['title'] ?? '',
       content: json['content'] ?? '',
       videoUrl: json['videoUrl'] ?? '',
-      questionIds: List<String>.from(json['questions'] ?? []),
+      questions: parsedQuestions,
     );
   }
 }
@@ -59,7 +74,7 @@ class BattleQuestion {
       text: json['text'] ?? '',
       options: List<String>.from(json['options'] ?? []),
       correctIndex: json['correctIndex'] ?? 0,
-      topic: json['topic'] ?? '',
+      topic: json['topic'] ?? 'General',
       points: json['points'] ?? 10,
     );
   }
@@ -102,6 +117,7 @@ class _LessonScreenState extends ConsumerState<LessonScreen>
 
   Future<void> _fetchLevelData() async {
     try {
+      // Check if data was passed in extra first (Optional optimization for later, sticking to fetch for now)
       // Fetch course to get level data
       final courseResponse = await ApiService.get(
         '/api/course?id=${widget.courseId}',
@@ -119,30 +135,19 @@ class _LessonScreenState extends ConsumerState<LessonScreen>
         }
       }
 
-      // Fetch questions for this level
-      if (_level != null && _level!.questionIds.isNotEmpty) {
-        try {
-          // Fetch all questions and filter by level's questionIds
-          final qResponse = await ApiService.get('/api/battles/questions');
-          if (qResponse['success'] == true) {
-            final allQuestions = List<Map<String, dynamic>>.from(
-              qResponse['questions'] ?? [],
-            );
-            for (var q in allQuestions) {
-              if (_level!.questionIds.contains(q['id'])) {
-                _questions.add(BattleQuestion.fromJson(q));
-              }
-            }
-          }
-        } catch (e) {
-          debugPrint('Error fetching questions: $e');
-        }
+      // Populate questions directly from the level
+      if (_level != null) {
+        _questions = _level!.questions;
       }
 
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     } catch (e) {
       debugPrint('Error fetching level: $e');
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/services/api_service.dart';
 import '../../../core/providers/user_state.dart';
 
@@ -65,16 +66,22 @@ class CourseQuestion {
 
 class InstructorCourse {
   final String id;
+  final String instructorId; // Added for sync fix
   String title;
   int studentCount;
   int progress;
+  String duration;
+  String instructorName;
   List<CourseLevel> levels;
 
   InstructorCourse({
     required this.id,
+    this.instructorId = '', // Default empty, but should be populated
     required this.title,
     this.studentCount = 0,
     this.progress = 0,
+    this.duration = '10h',
+    this.instructorName = '',
     List<CourseLevel>? levels,
   }) : levels = levels ?? [];
 
@@ -82,13 +89,19 @@ class InstructorCourse {
     String? title,
     int? studentCount,
     int? progress,
+    String? duration,
+    String? instructorName,
     List<CourseLevel>? levels,
   }) {
+    // instructorId is immutable for now in copyWith as it doesn't change
     return InstructorCourse(
       id: id,
+      instructorId: instructorId,
       title: title ?? this.title,
       studentCount: studentCount ?? this.studentCount,
       progress: progress ?? this.progress,
+      duration: duration ?? this.duration,
+      instructorName: instructorName ?? this.instructorName,
       levels: levels ?? this.levels,
     );
   }
@@ -300,47 +313,67 @@ class InstructorStateNotifier extends Notifier<InstructorState> {
           ? userState.profile.institution
           : 'Cognify Academy',
       // Preserve existing mock data structure for now until real endpoints exist for everything
-      courses: [
-        InstructorCourse(
-          id: '1',
-          title: 'Flutter Mastery',
-          studentCount: 24,
-          progress: 85,
-          levels: [
-            CourseLevel(
-              id: 'l1',
-              title: 'Introduction to Flutter',
-              content: 'Welcome to Flutter! In this module...',
-              videoUrl: 'https://youtu.be/dQw4w9WgXcQ?si=6nY71hrAFC8hTrMh',
-              questions: [
-                CourseQuestion(
-                  id: 'q1',
-                  text: 'What is Flutter?',
-                  options: ['A bird', 'A UI toolkit', 'A database', 'A server'],
-                  correctIndex: 1,
-                ),
-              ],
-            ),
-          ],
-        ),
-        InstructorCourse(
-          id: '2',
-          title: 'Dart Fundamentals',
-          studentCount: 156,
-          progress: 92,
-        ),
-      ],
-      certificates: [
-        GeneratedCertificate(
-          id: 'c1',
-          studentName: 'John Doe',
-          courseName: 'Flutter Mastery',
-          templateName: 'Classic',
-          isAiGenerated: false,
-          createdAt: DateTime.now().subtract(const Duration(days: 2)),
-        ),
-      ],
+      courses: [], // Will be fetched from API
+      certificates: [],
     );
+  }
+
+  // Helper to map backend Course to InstructorCourse
+  InstructorCourse _mapCourse(Map<String, dynamic> json) {
+    // Map levels if present
+    List<CourseLevel> levels = [];
+    if (json['levels'] != null) {
+      levels = (json['levels'] as List)
+          .map(
+            (l) => CourseLevel(
+              id: l['id'] ?? '',
+              title: l['title'] ?? '',
+              content: l['content'] ?? '',
+              videoUrl: l['videoUrl'] ?? '',
+              questions:
+                  (l['questions'] as List?)?.map((q) {
+                    return CourseQuestion(
+                      id: q['id'] ?? 'q_mock',
+                      text: q['text'] ?? 'Question',
+                      options: List<String>.from(q['options'] ?? []),
+                      correctIndex: q['correctIndex'] ?? 0,
+                    );
+                  }).toList() ??
+                  [],
+            ),
+          )
+          .toList();
+    }
+
+    return InstructorCourse(
+      id: json['id'],
+      instructorId: json['instructorId'] ?? '', // Map from backend
+      title: json['title'],
+      studentCount: 0,
+      progress: (json['progress'] ?? 0).toInt(),
+      duration: json['duration'] ?? '10h',
+      instructorName: json['instructorName'] ?? 'Instructor',
+      levels: levels,
+    );
+  }
+
+  Future<void> fetchCourses() async {
+    final userState = ref.read(userStateProvider);
+    final instructorId = userState.profile.id;
+    if (instructorId.isEmpty) return;
+
+    try {
+      final result = await ApiService.get(
+        '/api/instructor/courses?instructorId=$instructorId',
+      );
+      if (result['success'] == true && result['courses'] != null) {
+        final List<dynamic> courseList = result['courses'];
+        final courses = courseList.map((c) => _mapCourse(c)).toList();
+        state = state.copyWith(courses: courses);
+      }
+    } catch (e) {
+      debugPrint('Error fetching instructor courses: $e');
+    }
   }
 
   Future<void> fetchDashboardStats() async {
@@ -371,7 +404,8 @@ class InstructorStateNotifier extends Notifier<InstructorState> {
                   .toList() ??
               state.recentActivity,
         );
-        // Note: courses list update logic would go here when backend returns full course list
+        // Fetch actual courses list
+        await fetchCourses();
       }
     } catch (e) {
       debugPrint('Error fetching dashboard stats: $e');
@@ -418,49 +452,152 @@ class InstructorStateNotifier extends Notifier<InstructorState> {
 
   // --- Course Management Methods ---
 
-  void addCourse(String title) {
-    final newCourse = InstructorCourse(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      title: title,
-      levels: [CourseLevel(id: 'l1', title: 'Module 1')],
-    );
-    state = state.copyWith(courses: [...state.courses, newCourse]);
+  Future<void> addCourse(String title) async {
+    final userState = ref.read(userStateProvider);
+
+    // Harden: Ensure we have valid user data
+    var instructorId = userState.profile.id;
+    var instructorName = userState.profile.name;
+
+    if (instructorId.isEmpty) {
+      // Fallback: Try to get from SharedPrefs directly
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        instructorId =
+            prefs.getString('profile_id') ??
+            prefs.getString('user_email') ??
+            '';
+        instructorName = prefs.getString('profile_name') ?? 'Instructor';
+      } catch (e) {
+        debugPrint('Error accessing SharedPrefs: $e');
+      }
+    }
+
+    if (instructorId.isEmpty) {
+      debugPrint('Error: Cannot create course without Instructor ID');
+      // In a real app, show error to user. For now, use a fallback for dev if needed, or return.
+      // returning to avoid bad state
+      return;
+    }
+
+    final newCourseData = {
+      'title': title,
+      'instructorId': instructorId,
+      'instructorName': instructorName.isNotEmpty
+          ? instructorName
+          : 'Unknown Instructor',
+      'duration': '10h', // Default duration
+      'progress': 0, // Initialize progress
+      'levels': [],
+    };
+
+    debugPrint('Creating course with payload: $newCourseData');
+
+    try {
+      final result = await ApiService.post('/api/courses', newCourseData);
+      if (result['success'] == true) {
+        // Refresh courses
+        await fetchCourses();
+      }
+    } catch (e) {
+      debugPrint('Error creating course: $e');
+    }
   }
 
-  void updateCourse(String courseId, InstructorCourse updatedCourse) {
-    state = state.copyWith(
-      courses: state.courses
-          .map((c) => c.id == courseId ? updatedCourse : c)
-          .toList(),
-    );
+  Future<void> updateCourse(
+    String courseId,
+    InstructorCourse updatedCourse,
+  ) async {
+    // Map Frontend InstructorCourse back to Backend Course model structure
+    final courseData = {
+      'id': updatedCourse.id,
+      'instructorId': updatedCourse.instructorId, // CRITICAL FIX: Include ID
+      'title': updatedCourse.title,
+      'progress': updatedCourse.progress,
+      'instructorName': updatedCourse.instructorName, // Ensure this isn't lost
+      'duration': updatedCourse.duration, // Ensure this isn't lost
+      // Map levels and embedded questions
+      'levels': updatedCourse.levels.map((l) {
+        return {
+          'id': l.id,
+          'title': l.title,
+          'content': l.content,
+          'videoUrl': l.videoUrl,
+          'questions': l.questions.map((q) {
+            return {
+              'id': q.id,
+              'text': q.text,
+              'options': q.options,
+              'correctIndex': q.correctIndex,
+              // Add default values for backend Question fields not in frontend yet
+              'difficulty': 'Medium',
+              'topic': updatedCourse.title,
+              'points': 10,
+              'timeLimit': 30,
+            };
+          }).toList(),
+        };
+      }).toList(),
+    };
+
+    try {
+      final result = await ApiService.put('/api/courses', courseData);
+      if (result['success'] == true) {
+        // We could just update local state instead of re-fetching to be snappier,
+        // but re-fetching ensures sync. Let's do optimistic update + fetch.
+        state = state.copyWith(
+          courses: state.courses
+              .map((c) => c.id == courseId ? updatedCourse : c)
+              .toList(),
+        );
+        // await fetchCourses(); // Optional: uncomment if we trust backend more
+      }
+    } catch (e) {
+      debugPrint('Error updating course: $e');
+    }
   }
 
   void addLevelToCourse(String courseId) {
+    InstructorCourse? updatedCourse;
     final courses = state.courses.map((c) {
       if (c.id == courseId) {
         final newLevel = CourseLevel(
-          id: 'l${c.levels.length + 1}',
+          id: 'l${c.levels.length + 1}', // In real app, maybe use UUID
           title: 'Module ${c.levels.length + 1}',
         );
-        return c.copyWith(levels: [...c.levels, newLevel]);
+        updatedCourse = c.copyWith(levels: [...c.levels, newLevel]);
+        return updatedCourse!;
       }
       return c;
     }).toList();
+
+    // Update local state first (optimistic)
     state = state.copyWith(courses: courses);
+
+    // Persist
+    if (updatedCourse != null) {
+      updateCourse(courseId, updatedCourse!);
+    }
   }
 
   void updateLevel(String courseId, String levelId, CourseLevel updatedLevel) {
+    InstructorCourse? updatedCourse;
     final courses = state.courses.map((c) {
       if (c.id == courseId) {
-        return c.copyWith(
+        updatedCourse = c.copyWith(
           levels: c.levels
               .map((l) => l.id == levelId ? updatedLevel : l)
               .toList(),
         );
+        return updatedCourse!;
       }
       return c;
     }).toList();
     state = state.copyWith(courses: courses);
+
+    if (updatedCourse != null) {
+      updateCourse(courseId, updatedCourse!);
+    }
   }
 
   void addQuestionToLevel(
@@ -468,9 +605,10 @@ class InstructorStateNotifier extends Notifier<InstructorState> {
     String levelId,
     CourseQuestion question,
   ) {
+    InstructorCourse? updatedCourse;
     final courses = state.courses.map((c) {
       if (c.id == courseId) {
-        return c.copyWith(
+        updatedCourse = c.copyWith(
           levels: c.levels.map((l) {
             if (l.id == levelId) {
               return l.copyWith(questions: [...l.questions, question]);
@@ -478,10 +616,15 @@ class InstructorStateNotifier extends Notifier<InstructorState> {
             return l;
           }).toList(),
         );
+        return updatedCourse!;
       }
       return c;
     }).toList();
     state = state.copyWith(courses: courses);
+
+    if (updatedCourse != null) {
+      updateCourse(courseId, updatedCourse!);
+    }
   }
 
   void updateQuestion(
@@ -490,9 +633,10 @@ class InstructorStateNotifier extends Notifier<InstructorState> {
     String questionId,
     CourseQuestion updatedQuestion,
   ) {
+    InstructorCourse? updatedCourse;
     final courses = state.courses.map((c) {
       if (c.id == courseId) {
-        return c.copyWith(
+        updatedCourse = c.copyWith(
           levels: c.levels.map((l) {
             if (l.id == levelId) {
               return l.copyWith(
@@ -504,10 +648,15 @@ class InstructorStateNotifier extends Notifier<InstructorState> {
             return l;
           }).toList(),
         );
+        return updatedCourse!;
       }
       return c;
     }).toList();
     state = state.copyWith(courses: courses);
+
+    if (updatedCourse != null) {
+      updateCourse(courseId, updatedCourse!);
+    }
   }
 
   void addCertificate(GeneratedCertificate cert) {

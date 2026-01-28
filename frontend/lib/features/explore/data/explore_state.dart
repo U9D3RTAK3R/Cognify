@@ -31,7 +31,7 @@ class Course {
   final double price;
   final String instructor;
   final int lessons;
-  final int duration; // in hours
+  final String duration; // e.g. "10h"
   final String? recommendationReason; // Populated if recommended
   final int difficultyRating; // 1-5 scale
 
@@ -46,7 +46,7 @@ class Course {
     this.price = 0,
     this.instructor = 'Unknown',
     this.lessons = 10,
-    this.duration = 5,
+    this.duration = '5h',
     this.recommendationReason,
     this.difficultyRating = 3,
   });
@@ -64,9 +64,16 @@ class Course {
         orElse: () => CourseStatus.available,
       ),
       price: (json['price'] ?? 0).toDouble(),
-      instructor: json['instructorId'] ?? 'Unknown',
-      lessons: (json['levels'] as List?)?.length ?? 10,
-      duration: 5,
+      instructor:
+          (json['instructorName'] != null &&
+              json['instructorName'].toString().isNotEmpty)
+          ? json['instructorName']
+          : 'Unknown Instructor',
+      lessons: (json['levels'] as List?)?.length ?? 0,
+      duration:
+          (json['duration'] != null && json['duration'].toString().isNotEmpty)
+          ? json['duration']
+          : '5h',
       difficultyRating: json['difficultyRating'] ?? 3,
     );
   }

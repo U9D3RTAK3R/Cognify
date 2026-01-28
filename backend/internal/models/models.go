@@ -29,6 +29,8 @@ type Course struct {
 	ColorHex         string        `json:"colorHex" firestore:"colorHex"`
 	Tags             []string      `json:"tags" firestore:"tags"`
 	InstructorID     string        `json:"instructorId" firestore:"instructorId"`
+	InstructorName   string        `json:"instructorName" firestore:"instructorName"`     // Added
+	Duration         string        `json:"duration" firestore:"duration"`                 // Added: e.g. "5h", "10h 30m"
 	DifficultyRating int           `json:"difficultyRating" firestore:"difficultyRating"` // 1-5 or similar
 	Prerequisites    []string      `json:"prerequisites" firestore:"prerequisites"`
 	LearningOutcomes string        `json:"learningOutcomes" firestore:"learningOutcomes"`
@@ -38,11 +40,11 @@ type Course struct {
 
 // CourseLevel represents a single lesson/module within a course
 type CourseLevel struct {
-	ID        string   `json:"id" firestore:"id"`
-	Title     string   `json:"title" firestore:"title"`
-	Content   string   `json:"content" firestore:"content"`     // Markdown text for reading
-	VideoURL  string   `json:"videoUrl" firestore:"videoUrl"`   // YouTube embed URL
-	Questions []string `json:"questions" firestore:"questions"` // Question IDs for the battle
+	ID        string     `json:"id" firestore:"id"`
+	Title     string     `json:"title" firestore:"title"`
+	Content   string     `json:"content" firestore:"content"`     // Markdown text for reading
+	VideoURL  string     `json:"videoUrl" firestore:"videoUrl"`   // YouTube embed URL
+	Questions []Question `json:"questions" firestore:"questions"` // Embedded questions
 }
 
 type Enrollment struct {

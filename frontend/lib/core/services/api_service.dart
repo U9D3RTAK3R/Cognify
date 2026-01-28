@@ -6,7 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class ApiService {
   // Use localhost for Web, 10.0.2.2 for Android Emulator
   static const String baseUrl = kIsWeb
-      ? 'https://cognify-gouq.onrender.com'
+      ? 'http://localhost:8080'
       : 'http://10.0.2.2:8080';
 
   static Future<Map<String, String>> _getHeaders() async {
@@ -26,6 +26,31 @@ class ApiService {
     try {
       final headers = await _getHeaders();
       final response = await http.post(
+        url,
+        headers: headers,
+        body: jsonEncode(body),
+      );
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return data;
+      } else {
+        throw Exception(data['message'] ?? 'Request failed');
+      }
+    } catch (e) {
+      throw Exception('Network error: $e');
+    }
+  }
+
+  static Future<Map<String, dynamic>> put(
+    String endpoint,
+    Map<String, dynamic> body,
+  ) async {
+    final url = Uri.parse('$baseUrl$endpoint');
+    try {
+      final headers = await _getHeaders();
+      final response = await http.put(
         url,
         headers: headers,
         body: jsonEncode(body),

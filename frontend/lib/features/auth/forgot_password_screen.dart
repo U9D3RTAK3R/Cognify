@@ -6,7 +6,9 @@ import '../../core/theme/app_theme.dart';
 import '../../core/services/api_service.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
-  const ForgotPasswordScreen({super.key});
+  final String? backPath;
+
+  const ForgotPasswordScreen({super.key, this.backPath});
 
   @override
   State<ForgotPasswordScreen> createState() => _ForgotPasswordScreenState();
@@ -89,7 +91,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => context.go('/login'),
+          onPressed: () => context.go(widget.backPath ?? '/login'),
         ),
       ),
       body: Stack(

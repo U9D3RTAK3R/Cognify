@@ -147,7 +147,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/forgot-password',
-        builder: (context, state) => const ForgotPasswordScreen(),
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>? ?? {};
+          final backPath = extra['backPath'] as String?;
+          return ForgotPasswordScreen(backPath: backPath);
+        },
       ),
       GoRoute(
         path: '/reset-password-otp',

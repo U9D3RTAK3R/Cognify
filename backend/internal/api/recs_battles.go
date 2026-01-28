@@ -97,6 +97,17 @@ func SeedBattleDataHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Pre-define questions for embedding
+	q1 := models.Question{ID: "q1", Text: "What does 'setState' do?", Options: []string{"Rebuilds the widget", "Stops the app", "Nothing", "Deletes data"}, CorrectIndex: 0, Difficulty: "Easy", Topic: "Flutter", Points: 10, TimeLimit: 30}
+	q2 := models.Question{ID: "q2", Text: "Which is NOT a state management solution?", Options: []string{"Provider", "Riverpod", "Bloc", "Container"}, CorrectIndex: 3, Difficulty: "Easy", Topic: "State Management", Points: 10, TimeLimit: 30}
+	q3 := models.Question{ID: "q3", Text: "What is the purpose of 'key' in Flutter?", Options: []string{"Authentication", "Preserve state", "Styling", "Navigation"}, CorrectIndex: 1, Difficulty: "Medium", Topic: "Flutter", Points: 20, TimeLimit: 45}
+	animQ1 := models.Question{ID: "anim_q1", Text: "What is the difference between implicit and explicit animations?", Options: []string{"Implicit is automatic, explicit uses controllers", "No difference", "Explicit is faster", "Implicit uses controllers"}, CorrectIndex: 0, Difficulty: "Medium", Topic: "Animation", Points: 20, TimeLimit: 30}
+	animQ2 := models.Question{ID: "anim_q2", Text: "Which widget automatically animates property changes?", Options: []string{"Container", "AnimatedContainer", "StatefulWidget", "Scaffold"}, CorrectIndex: 1, Difficulty: "Easy", Topic: "Animation", Points: 10, TimeLimit: 20}
+	animQ3 := models.Question{ID: "anim_q3", Text: "What does AnimatedOpacity animate?", Options: []string{"Position", "Size", "Transparency", "Color"}, CorrectIndex: 2, Difficulty: "Easy", Topic: "Animation", Points: 10, TimeLimit: 20}
+	animQ4 := models.Question{ID: "anim_q4", Text: "What parameter controls animation speed in implicit widgets?", Options: []string{"speed", "duration", "velocity", "time"}, CorrectIndex: 1, Difficulty: "Easy", Topic: "Animation", Points: 10, TimeLimit: 20}
+	animQ5 := models.Question{ID: "anim_q5", Text: "What does an AnimationController control?", Options: []string{"Widget tree", "Animation timing", "Database", "Routing"}, CorrectIndex: 1, Difficulty: "Medium", Topic: "Animation", Points: 20, TimeLimit: 30}
+	animQ6 := models.Question{ID: "anim_q6", Text: "What is a Tween used for?", Options: []string{"Tweeting updates", "Defining animation value range", "Styling", "Navigation"}, CorrectIndex: 1, Difficulty: "Medium", Topic: "Animation", Points: 20, TimeLimit: 30}
+
 	// Seed Courses with Levels
 	advAnimationsLevels := []models.CourseLevel{
 		{
@@ -104,21 +115,21 @@ func SeedBattleDataHandler(w http.ResponseWriter, r *http.Request) {
 			Title:     "Introduction to Animations",
 			Content:   "# Welcome to Advanced Animations\n\nAnimations bring your Flutter apps to life! In this module, you'll learn:\n\n- What makes a great animation\n- The Flutter animation framework\n- Implicit vs Explicit animations\n\n## Why Animations Matter\n\nSmooth animations improve user experience by providing visual feedback and making interactions feel natural.",
 			VideoURL:  "https://www.youtube.com/watch?v=IVTjpW3W33s",
-			Questions: []string{"anim_q1", "anim_q2"},
+			Questions: []models.Question{animQ1, animQ2},
 		},
 		{
 			ID:        "anim_l2",
 			Title:     "Implicit Animations",
 			Content:   "# Implicit Animations\n\nImplicit animations are the easiest way to add animations in Flutter.\n\n## Key Widgets\n- `AnimatedContainer`\n- `AnimatedOpacity`\n- `AnimatedPadding`\n- `AnimatedPositioned`\n\n## How They Work\nJust change a property value and Flutter automatically animates to the new value!",
 			VideoURL:  "https://www.youtube.com/watch?v=IVTjpW3W33s",
-			Questions: []string{"anim_q3", "anim_q4"},
+			Questions: []models.Question{animQ3, animQ4},
 		},
 		{
 			ID:        "anim_l3",
 			Title:     "Explicit Animations & Controllers",
 			Content:   "# Explicit Animations\n\nFor complete control, use `AnimationController` and `Tween`.\n\n## Core Concepts\n- AnimationController - controls timing\n- Tween - defines start/end values\n- AnimatedBuilder - rebuilds on each frame\n\n## Advanced Techniques\n- Curves for easing\n- Staggered animations\n- Hero animations",
 			VideoURL:  "https://www.youtube.com/watch?v=txLvvlooT20",
-			Questions: []string{"anim_q5", "anim_q6"},
+			Questions: []models.Question{animQ5, animQ6},
 		},
 	}
 
@@ -134,19 +145,8 @@ func SeedBattleDataHandler(w http.ResponseWriter, r *http.Request) {
 		db.FirestoreClient.Collection("courses").Doc(c.ID).Set(ctx, c)
 	}
 
-	// Seed Questions (including animation questions)
-	questions := []models.Question{
-		{ID: "q1", Text: "What does 'setState' do?", Options: []string{"Rebuilds the widget", "Stops the app", "Nothing", "Deletes data"}, CorrectIndex: 0, Difficulty: "Easy", Topic: "Flutter", Points: 10, TimeLimit: 30},
-		{ID: "q2", Text: "Which is NOT a state management solution?", Options: []string{"Provider", "Riverpod", "Bloc", "Container"}, CorrectIndex: 3, Difficulty: "Easy", Topic: "State Management", Points: 10, TimeLimit: 30},
-		{ID: "q3", Text: "What is the purpose of 'key' in Flutter?", Options: []string{"Authentication", "Preserve state", "Styling", "Navigation"}, CorrectIndex: 1, Difficulty: "Medium", Topic: "Flutter", Points: 20, TimeLimit: 45},
-		// Animation questions
-		{ID: "anim_q1", Text: "What is the difference between implicit and explicit animations?", Options: []string{"Implicit is automatic, explicit uses controllers", "No difference", "Explicit is faster", "Implicit uses controllers"}, CorrectIndex: 0, Difficulty: "Medium", Topic: "Animation", Points: 20, TimeLimit: 30},
-		{ID: "anim_q2", Text: "Which widget automatically animates property changes?", Options: []string{"Container", "AnimatedContainer", "StatefulWidget", "Scaffold"}, CorrectIndex: 1, Difficulty: "Easy", Topic: "Animation", Points: 10, TimeLimit: 20},
-		{ID: "anim_q3", Text: "What does AnimatedOpacity animate?", Options: []string{"Position", "Size", "Transparency", "Color"}, CorrectIndex: 2, Difficulty: "Easy", Topic: "Animation", Points: 10, TimeLimit: 20},
-		{ID: "anim_q4", Text: "What parameter controls animation speed in implicit widgets?", Options: []string{"speed", "duration", "velocity", "time"}, CorrectIndex: 1, Difficulty: "Easy", Topic: "Animation", Points: 10, TimeLimit: 20},
-		{ID: "anim_q5", Text: "What does an AnimationController control?", Options: []string{"Widget tree", "Animation timing", "Database", "Routing"}, CorrectIndex: 1, Difficulty: "Medium", Topic: "Animation", Points: 20, TimeLimit: 30},
-		{ID: "anim_q6", Text: "What is a Tween used for?", Options: []string{"Tweeting updates", "Defining animation value range", "Styling", "Navigation"}, CorrectIndex: 1, Difficulty: "Medium", Topic: "Animation", Points: 20, TimeLimit: 30},
-	}
+	// Seed Questions (including animation questions) - for global pool
+	questions := []models.Question{q1, q2, q3, animQ1, animQ2, animQ3, animQ4, animQ5, animQ6}
 	for _, q := range questions {
 		db.FirestoreClient.Collection("questions").Doc(q.ID).Set(ctx, q)
 	}

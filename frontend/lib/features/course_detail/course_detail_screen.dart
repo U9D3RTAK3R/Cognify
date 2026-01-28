@@ -23,12 +23,33 @@ class ApiCourseLevel {
   });
 
   factory ApiCourseLevel.fromJson(Map<String, dynamic> json) {
+    var qIds = <String>[];
+    if (json['questions'] != null) {
+      final list = json['questions'] as List;
+      if (list.isNotEmpty) {
+        if (list.first is String) {
+          qIds = List<String>.from(list);
+        } else {
+          // It's likely a Map (object), extract IDs
+          qIds = list
+              .map((q) {
+                if (q is Map) {
+                  return (q['id'] ?? '').toString();
+                }
+                return '';
+              })
+              .where((s) => s.isNotEmpty)
+              .toList();
+        }
+      }
+    }
+
     return ApiCourseLevel(
       id: json['id'] ?? '',
       title: json['title'] ?? '',
       content: json['content'] ?? '',
       videoUrl: json['videoUrl'] ?? '',
-      questionIds: List<String>.from(json['questions'] ?? []),
+      questionIds: qIds,
     );
   }
 }
@@ -173,7 +194,7 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen> {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        '${course.duration}h',
+                        course.duration,
                         style: TextStyle(color: AppTheme.textGrey),
                       ),
                     ],
@@ -351,9 +372,26 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    // Use API levels if available, otherwise fallback to mock
     if (_levels.isEmpty) {
-      return _buildMockLessons(course, color);
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            children: [
+              Icon(
+                Icons.dashboard_customize,
+                size: 48,
+                color: Colors.grey.shade800,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                "No lessons added yet",
+                style: TextStyle(color: AppTheme.textGrey),
+              ),
+            ],
+          ),
+        ),
+      );
     }
 
     return Column(
@@ -430,88 +468,6 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen> {
                 if (!isLocked) Icon(Icons.chevron_right, color: color),
               ],
             ),
-          ),
-        ).animate().fadeIn(delay: (index * 100).ms);
-      }),
-    );
-  }
-
-  Widget _buildMockLessons(Course course, Color color) {
-    final lessonTitles = [
-      'Introduction',
-      'Core Concepts',
-      'Advanced Topics',
-      'Best Practices',
-      'Final Project',
-    ];
-
-    return Column(
-      children: List.generate(5, (index) {
-        final isCompleted = course.progress > (index + 1) / 5;
-        final isCurrent =
-            course.progress >= index / 5 && course.progress < (index + 1) / 5;
-        final isLocked =
-            course.status == CourseStatus.available ||
-            course.status == CourseStatus.enrolled;
-
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: isCurrent ? color.withOpacity(0.1) : AppTheme.cardColor,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: isCurrent ? color : Colors.transparent),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: isCompleted
-                      ? color
-                      : (isLocked
-                            ? Colors.grey.shade800
-                            : color.withOpacity(0.2)),
-                ),
-                child: Icon(
-                  isCompleted
-                      ? Icons.check
-                      : (isLocked ? Icons.lock : Icons.play_arrow),
-                  color: isCompleted
-                      ? Colors.black
-                      : (isLocked ? Colors.grey : color),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "Lesson ${index + 1}: ${lessonTitles[index]}",
-                      style: AppTheme.bodyMedium.copyWith(
-                        color: isLocked ? Colors.grey : Colors.white,
-                      ),
-                    ),
-                    Text(
-                      "${10 + index * 5} min",
-                      style: TextStyle(color: AppTheme.textGrey, fontSize: 12),
-                    ),
-                  ],
-                ),
-              ),
-              if (isCurrent && course.status == CourseStatus.ongoing)
-                ElevatedButton(
-                  onPressed: () => context.go('/battle'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: color,
-                    foregroundColor: Colors.black,
-                  ),
-                  child: const Text("Continue"),
-                ),
-            ],
           ),
         ).animate().fadeIn(delay: (index * 100).ms);
       }),

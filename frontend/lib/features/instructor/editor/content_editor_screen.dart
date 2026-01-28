@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/providers/instructor_state.dart';
+import '../../../core/providers/user_state.dart';
+import '../../../core/services/api_service.dart';
 
 class ContentEditorScreen extends ConsumerStatefulWidget {
   const ContentEditorScreen({super.key});
@@ -99,6 +101,10 @@ class _ContentEditorScreenState extends ConsumerState<ContentEditorScreen>
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.settings, color: Colors.grey),
+            onPressed: () => _showEditCourseDialog(context, course),
+          ),
           IconButton(
             icon: const Icon(Icons.add_circle, color: Colors.orange),
             onPressed: () {
@@ -526,29 +532,87 @@ class _ContentEditorScreenState extends ConsumerState<ContentEditorScreen>
     InstructorCourse course,
     CourseLevel level,
   ) async {
+    // 1. Validation: Must have at least one question
+    if (level.questions.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'AI generate cannot be used till at least 1 question is manually added',
+            style: TextStyle(color: Colors.white),
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // 2. Validation: Limit check
+    if (level.questions.length >= 20) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Question limit reached (20). Cannot generate more.',
+            style: TextStyle(color: Colors.white),
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     setState(() => _isGeneratingQuestions = true);
-    await Future.delayed(const Duration(seconds: 2));
-    final newQuestion = CourseQuestion(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      text: 'What is the purpose of BuildContext?',
-      options: [
-        'To build widgets',
-        'To locate widgets in tree',
-        'To manage state',
-        'To handle navigation',
-      ],
-      correctIndex: 1,
-    );
-    ref
-        .read(instructorStateProvider.notifier)
-        .addQuestionToLevel(course.id, level.id, newQuestion);
-    setState(() => _isGeneratingQuestions = false);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('AI generated a new question! ✨'),
-        backgroundColor: Colors.purple,
-      ),
-    );
+
+    try {
+      final userState = ref.read(
+        userStateProvider,
+      ); // Get user context if needed, mostly for auth header handled by ApiService
+
+      final result = await ApiService.post('/api/instructor/ai/question', {
+        'courseTitle': course.title,
+        'levelTitle': level.title,
+        'existingQuestions': level.questions.map((q) {
+          return {'text': q.text, 'options': q.options};
+        }).toList(),
+      });
+
+      if (result['success'] == true && result['data'] != null) {
+        final data = result['data'];
+        final newQuestion = CourseQuestion(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          text: data['text'] ?? 'AI Generated Question',
+          options: List<String>.from(data['options'] ?? []),
+          correctIndex: data['correctIndex'] ?? 0,
+        );
+
+        ref
+            .read(instructorStateProvider.notifier)
+            .addQuestionToLevel(course.id, level.id, newQuestion);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('AI generated a new question! ✨'),
+              backgroundColor: Colors.purple,
+            ),
+          );
+        }
+      } else {
+        throw Exception(result['message'] ?? 'Unknown error');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to generate question: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isGeneratingQuestions = false);
+      }
+    }
   }
 
   void _showAddQuestionDialog(InstructorCourse course, CourseLevel level) {
@@ -786,6 +850,76 @@ class _ContentEditorScreenState extends ConsumerState<ContentEditorScreen>
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
             child: const Text('Rename', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showEditCourseDialog(BuildContext context, InstructorCourse course) {
+    final titleController = TextEditingController(text: course.title);
+    final durationController = TextEditingController(text: course.duration);
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppTheme.cardColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('Course Settings', style: AppTheme.headlineMedium),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: titleController,
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                labelText: 'Course Title',
+                labelStyle: TextStyle(color: AppTheme.textGrey),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: durationController,
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                labelText: 'Duration (e.g. 5h 30m)',
+                labelStyle: TextStyle(color: AppTheme.textGrey),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel', style: TextStyle(color: AppTheme.textGrey)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (titleController.text.isNotEmpty) {
+                final updatedCourse = course.copyWith(
+                  title: titleController.text,
+                  duration: durationController.text,
+                );
+                ref
+                    .read(instructorStateProvider.notifier)
+                    .updateCourse(course.id, updatedCourse);
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Course settings updated! ✓'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
+            child: const Text('Save', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),

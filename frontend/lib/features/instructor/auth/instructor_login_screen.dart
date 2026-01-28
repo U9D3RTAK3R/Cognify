@@ -228,7 +228,23 @@ class _InstructorLoginScreenState extends State<InstructorLoginScreen> {
                     return null;
                   },
                 ),
-                const SizedBox(height: 32),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () => context.go(
+                      '/forgot-password',
+                      extra: {'backPath': '/instructor/login'},
+                    ),
+                    child: Text(
+                      'Forgot Password?',
+                      style: TextStyle(
+                        color: AppTheme.textGrey,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
 
                 // Login Button
                 SizedBox(

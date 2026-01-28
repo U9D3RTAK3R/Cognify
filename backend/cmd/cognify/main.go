@@ -83,6 +83,12 @@ func main() {
 		r.Get("/course", api.GetCourseHandler)
 		r.Get("/user/enrollments", api.GetUserEnrollmentsHandler)
 
+		// Instructor Course Management (Protected in real app, keeping simple for now)
+		r.Post("/courses", api.CreateCourseHandler)
+		r.Put("/courses", api.UpdateCourseHandler)
+		// For getting courses by instructor ID specifically
+		r.Get("/instructor/courses", api.GetInstructorCoursesHandler)
+
 		// Forum routes (public read)
 		r.Get("/posts", api.GetPostsHandler)
 		r.Get("/posts/comments", api.GetCommentsHandler)
@@ -139,6 +145,7 @@ func main() {
 			r.Post("/certificate/generate", api.GenerateCertificateHandler)
 			r.Post("/certificate/data", api.GetCertificateDataHandler)
 			r.Get("/analytics", api.InstructorAnalyticsHandler)
+			r.Post("/ai/question", api.GenerateQuestionHandler)
 		})
 	})
 
@@ -153,6 +160,7 @@ func main() {
 	log.Printf("   POST /api/ai/chat         - Chat with AI")
 	log.Printf("   POST /api/ai/summarize    - Summarize data")
 	log.Printf("   POST /api/instructor/certificate/generate - Generate certificate PDF")
+	log.Printf("   POST /api/instructor/ai/question - Generate question")
 
 	if err := http.ListenAndServe(":"+port, r); err != nil {
 		log.Fatalf("Server failed: %v", err)

@@ -660,7 +660,7 @@ class _InstructorForumScreenState extends ConsumerState<InstructorForumScreen>
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        '${post.comments.length}',
+                        '${post.commentCount}',
                         style: TextStyle(
                           color: AppTheme.primaryCyan,
                           fontSize: 12,
@@ -686,7 +686,7 @@ class _InstructorForumScreenState extends ConsumerState<InstructorForumScreen>
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              '${(post.upvotes * 12 + post.comments.length * 8)}',
+                              '${post.viewCount}',
                               style: const TextStyle(
                                 color: Colors.orange,
                                 fontSize: 11,
