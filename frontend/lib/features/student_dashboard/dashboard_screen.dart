@@ -5,6 +5,10 @@ import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/providers/gamification_state.dart';
 import '../../core/providers/user_state.dart';
+import '../../core/providers/auth_state.dart';
+import '../../core/theme/app_animations.dart';
+import '../../shared/animations/breathing_card.dart';
+import '../../shared/animations/animated_neon_button.dart';
 
 import 'widgets/xp_bar.dart';
 import 'widgets/stats_grid.dart';
@@ -22,6 +26,8 @@ class DashboardScreen extends ConsumerWidget {
     final userState = ref.watch(userStateProvider);
     final profile = userState.profile;
     final hasUnread = userState.notifications.any((n) => n.isUnread);
+    final authState = ref.watch(authProvider); // Watch auth state
+    final isInstructor = authState.role == 'instructor';
 
     final gamification = ref.watch(gamificationProvider);
     final stats = gamification.userStats;
@@ -37,218 +43,217 @@ class DashboardScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: AppTheme.bgBlack,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "Welcome back,",
-                        style: AppTheme.bodyMedium.copyWith(
-                          color: AppTheme.textGrey,
+      body: AppAnimations.pageTransitionWrapper(
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (isInstructor) ...[
+                  GestureDetector(
+                    onTap: () => context.go('/instructor/profile'),
+                    child: Container(
+                      margin: const EdgeInsets.only(bottom: 24),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Colors.orange.withOpacity(0.4),
+                          width: 1,
                         ),
                       ),
-                      Text(profile.name, style: AppTheme.headlineMedium),
-                    ],
-                  ),
-                  Row(
-                    children: [
-                      // Leaderboard button
-                      GestureDetector(
-                        onTap: () => context.push('/leaderboard'),
-                        child: Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: AppTheme.cardColor,
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: const Icon(
-                            Icons.emoji_events_outlined,
-                            color: Colors.amber,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      // Notifications button
-                      GestureDetector(
-                        onTap: () {
-                          showModalBottomSheet(
-                            context: context,
-                            backgroundColor: Colors.transparent,
-                            isScrollControlled: true,
-                            builder: (context) => DraggableScrollableSheet(
-                              initialChildSize: 0.6,
-                              minChildSize: 0.4,
-                              maxChildSize: 0.9,
-                              builder: (_, controller) =>
-                                  const NotificationsSheet(),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.school, color: Colors.orange),
+                          const SizedBox(width: 12),
+                          Text(
+                            "Viewing as Student - Switch Back to Instructor",
+                            style: AppTheme.bodyMedium.copyWith(
+                              color: Colors.orange,
+                              fontWeight: FontWeight.bold,
                             ),
-                          );
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.all(12),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "Welcome back,",
+                          style: AppTheme.bodyMedium.copyWith(
+                            color: AppTheme.textGrey,
+                          ),
+                        ),
+                        Text(profile.name, style: AppTheme.headlineMedium),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        // Leaderboard button
+                        Container(
                           decoration: BoxDecoration(
                             color: AppTheme.cardColor,
                             borderRadius: BorderRadius.circular(16),
                           ),
-                          child: Stack(
-                            children: [
-                              const Icon(
-                                Icons.notifications_outlined,
-                                color: Colors.white,
+                          child: IconButton(
+                            icon: const Icon(Icons.emoji_events_outlined, color: Colors.amber),
+                            onPressed: () => context.push('/leaderboard'),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        // Notifications button
+                        GestureDetector(
+                          onTap: () {
+                            showModalBottomSheet(
+                              context: context,
+                              backgroundColor: Colors.transparent,
+                              isScrollControlled: true,
+                              builder: (context) => DraggableScrollableSheet(
+                                initialChildSize: 0.6,
+                                minChildSize: 0.4,
+                                maxChildSize: 0.9,
+                                builder: (_, controller) =>
+                                    const NotificationsSheet(),
                               ),
-                              if (hasUnread)
-                                Positioned(
-                                  right: 0,
-                                  top: 0,
-                                  child: Container(
-                                    width: 8,
-                                    height: 8,
-                                    decoration: const BoxDecoration(
-                                      color: Colors.red,
-                                      shape: BoxShape.circle,
+                            );
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: AppTheme.cardColor,
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Stack(
+                              children: [
+                                const Icon(
+                                  Icons.notifications_outlined,
+                                  color: Colors.white,
+                                ),
+                                if (hasUnread)
+                                  Positioned(
+                                    right: 0,
+                                    top: 0,
+                                    child: Container(
+                                      width: 8,
+                                      height: 8,
+                                      decoration: const BoxDecoration(
+                                        color: Colors.red,
+                                        shape: BoxShape.circle,
+                                      ),
                                     ),
                                   ),
-                                ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
+                  ],
+                ).animate().fadeIn().slideY(begin: -0.2, end: 0),
+                const SizedBox(height: 24),
+                BreathingCard(
+                  glowColor: AppTheme.primaryCyan,
+                   child: XpBar(
+                    level: stats.level,
+                    currentXp: stats.totalXp % 1000,
+                    maxXp: 1000,
+                    rank: profile.name,
                   ),
-                ],
-              ).animate().fadeIn().slideY(begin: -0.2, end: 0),
-              const SizedBox(height: 24),
-              XpBar(
-                level: stats.level,
-                currentXp: stats.totalXp % 1000,
-                maxXp: 1000,
-                rank: profile.name,
-              ),
-              const SizedBox(height: 24),
-              const StatsGrid(),
-              const SizedBox(height: 24),
-              const ProgressChart(),
-              const SizedBox(height: 16),
-              const MasteryPieChart(),
-              const SizedBox(height: 24),
-              Text(
-                "QUICK ACTIONS",
-                style: AppTheme.labelLarge.copyWith(
-                  color: AppTheme.primaryCyan,
                 ),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: _actionButton(
-                      context,
-                      icon: Icons.forum,
-                      label: "Forum",
-                      color: Colors.blue,
-                      onTap: () => context.go('/forum'),
-                    ),
+                const SizedBox(height: 24),
+                const StatsGrid(),
+                const SizedBox(height: 24),
+                const ProgressChart(),
+                const SizedBox(height: 16),
+                const MasteryPieChart(),
+                const SizedBox(height: 24),
+                Text(
+                  "QUICK ACTIONS",
+                  style: AppTheme.labelLarge.copyWith(
+                    color: AppTheme.primaryCyan,
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _actionButton(
-                      context,
-                      icon: Icons.psychology,
-                      label: "Ask Oracle",
-                      color: AppTheme.accentPurple,
-                      onTap: () => context.go('/ai-chat'),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    "MY COURSES",
-                    style: AppTheme.labelLarge.copyWith(
-                      color: AppTheme.accentPurple,
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: () => context.go('/explore'),
-                    child: const Text("View All"),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                height: 180,
-                child: myCourses.isEmpty
-                    ? Center(
-                        child: Text(
-                          "No active courses yet. Start exploring!",
-                          style: TextStyle(color: AppTheme.textGrey),
-                        ),
-                      )
-                    : ListView.separated(
-                        scrollDirection: Axis.horizontal,
-                        padding: const EdgeInsets.symmetric(horizontal: 4),
-                        itemCount: myCourses.length,
-                        separatorBuilder: (context, index) =>
-                            const SizedBox(width: 16),
-                        itemBuilder: (context, index) {
-                          final course = myCourses[index];
-                          return GestureDetector(
-                            onTap: () => context.go('/course/${course.id}'),
-                            child: CourseCard(course: course)
-                                .animate()
-                                .fadeIn(delay: (100 * index).ms)
-                                .slideX(begin: 0.1, end: 0),
-                          );
-                        },
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: AnimatedNeonButton(
+                        label: "Forum",
+                        icon: Icons.forum,
+                        color: Colors.blue,
+                        onTap: () => context.go('/forum'),
+                        isPrimary: true,
                       ),
-              ),
-              const SizedBox(height: 100),
-            ],
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: AnimatedNeonButton(
+                        label: "Ask Oracle",
+                        icon: Icons.psychology,
+                        color: AppTheme.accentPurple,
+                        onTap: () => context.go('/ai-chat'),
+                        isPrimary: true,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      "MY COURSES",
+                      style: AppTheme.labelLarge.copyWith(
+                        color: AppTheme.accentPurple,
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () => context.go('/explore'),
+                      child: const Text("View All"),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  height: 180,
+                  child: myCourses.isEmpty
+                      ? Center(
+                          child: Text(
+                            "No active courses yet. Start exploring!",
+                            style: TextStyle(color: AppTheme.textGrey),
+                          ),
+                        )
+                      : ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          itemCount: myCourses.length,
+                          separatorBuilder: (context, index) =>
+                              const SizedBox(width: 16),
+                          itemBuilder: (context, index) {
+                            final course = myCourses[index];
+                            return GestureDetector(
+                              onTap: () => context.go('/course/${course.id}'),
+                              child: CourseCard(course: course),
+                            );
+                          },
+                        ),
+                ),
+                const SizedBox(height: 100),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _actionButton(
-    BuildContext context, {
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withOpacity(0.3)),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: color),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: TextStyle(color: color, fontWeight: FontWeight.bold),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }

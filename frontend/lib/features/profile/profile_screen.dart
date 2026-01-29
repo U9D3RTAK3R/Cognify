@@ -6,6 +6,9 @@ import '../../core/theme/app_theme.dart';
 import '../../core/providers/user_state.dart';
 import '../../core/providers/gamification_state.dart';
 import '../../core/providers/auth_state.dart';
+import '../../core/theme/app_animations.dart';
+import '../../shared/animations/breathing_card.dart';
+import '../../shared/animations/ambient_background.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -17,236 +20,282 @@ class ProfileScreen extends ConsumerWidget {
     final gamification = ref.watch(gamificationProvider);
     final stats = gamification.userStats;
     final achievements = gamification.achievements;
+    final authState = ref.watch(authProvider);
+    final isInstructor = authState.role == 'instructor';
 
     return Scaffold(
       backgroundColor: AppTheme.bgBlack,
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            const SizedBox(height: 40),
-            // Profile Header
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    AppTheme.primaryCyan.withOpacity(0.2),
-                    AppTheme.accentPurple.withOpacity(0.2),
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(
-                  color: AppTheme.primaryCyan.withOpacity(0.3),
-                ),
-              ),
-              child: Column(
-                children: [
-                  Container(
-                    width: 100,
-                    height: 100,
+      body: AmbientBackground(
+        child: AppAnimations.pageTransitionWrapper(
+          child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              const SizedBox(height: 40),
+              if (isInstructor) ...[
+                GestureDetector(
+                  onTap: () => context.go('/instructor/profile'),
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: 24),
+                    padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: const LinearGradient(
-                        colors: [AppTheme.primaryCyan, AppTheme.accentPurple],
+                      color: Colors.orange.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: Colors.orange.withOpacity(0.4),
+                        width: 1,
                       ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppTheme.primaryCyan.withOpacity(0.4),
-                          blurRadius: 20,
-                          spreadRadius: 5,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.school, color: Colors.orange),
+                        const SizedBox(width: 12),
+                        Text(
+                          "Viewing as Student - Switch Back to Instructor",
+                          style: AppTheme.bodyMedium.copyWith(
+                            color: Colors.orange,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ],
                     ),
-                    child: Center(
-                      child: Text(
-                        profile.avatarEmoji,
-                        style: const TextStyle(fontSize: 50),
-                      ),
+                  ),
+                ),
+              ],
+              // Profile Header
+              BreathingCard(
+                glowColor: AppTheme.primaryCyan,
+                child: Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        AppTheme.primaryCyan.withOpacity(0.2),
+                        AppTheme.accentPurple.withOpacity(0.2),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(
+                      color: AppTheme.primaryCyan.withOpacity(0.3),
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  Text(profile.name, style: AppTheme.headlineMedium),
-                  const SizedBox(height: 4),
-                  Text(
-                    "@${profile.username}",
-                    style: TextStyle(color: AppTheme.textGrey),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  child: Column(
                     children: [
-                      _statItem("Level", stats.level.toString()),
-                      _statItem("XP", "${stats.totalXp}"),
-                      _statItem("Rank", "#${stats.globalRank}"),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  // Edit Profile Button
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: () => context.push('/profile/edit'),
-                      icon: const Icon(Icons.edit_outlined, size: 18),
-                      label: const Text('Edit Profile'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppTheme.primaryCyan,
-                        side: BorderSide(
-                          color: AppTheme.primaryCyan.withOpacity(0.5),
+                      Container(
+                        width: 100,
+                        height: 100,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: const LinearGradient(
+                            colors: [AppTheme.primaryCyan, AppTheme.accentPurple],
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppTheme.primaryCyan.withOpacity(0.4),
+                              blurRadius: 20,
+                              spreadRadius: 5,
+                            ),
+                          ],
                         ),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                        child: Center(
+                          child: Text(
+                            profile.avatarEmoji,
+                            style: const TextStyle(fontSize: 50),
+                          ),
                         ),
                       ),
+                      const SizedBox(height: 16),
+                      Text(profile.name, style: AppTheme.headlineMedium),
+                      const SizedBox(height: 4),
+                      Text(
+                        "@${profile.username}",
+                        style: TextStyle(color: AppTheme.textGrey),
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          _statItem("Level", stats.level.toString()),
+                          _statItem("XP", "${stats.totalXp}"),
+                          _statItem("Rank", "#${stats.globalRank}"),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      // Edit Profile Button
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: () => context.push('/profile/edit'),
+                          icon: const Icon(Icons.edit_outlined, size: 18),
+                          label: const Text('Edit Profile'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppTheme.primaryCyan,
+                            side: BorderSide(
+                              color: AppTheme.primaryCyan.withOpacity(0.5),
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              
+              const SizedBox(height: 24),
+
+              // Achievements
+              _sectionTitle("ACHIEVEMENTS"),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 110,
+                child: achievements.isEmpty
+                    ? const Center(
+                        child: CircularProgressIndicator(
+                          color: AppTheme.primaryCyan,
+                        ),
+                      )
+                    : ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: achievements.length,
+                        itemBuilder: (context, index) {
+                          final achievement = achievements[index];
+                          return _achievementBadge(
+                            achievement.emoji,
+                            achievement.name,
+                            achievement.isUnlocked
+                                ? _getAchievementColor(achievement.category)
+                                : Colors.grey,
+                            isLocked: !achievement.isUnlocked,
+                            requirement: achievement.requirement,
+                          );
+                        },
+                      ),
+              ),
+
+              const SizedBox(height: 24),
+
+              // Stats
+              _sectionTitle("STATISTICS"),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _statCard(
+                      "Battles Won",
+                      stats.battlesWon.toString(),
+                      Icons.sports_esports,
+                      AppTheme.primaryCyan,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _statCard(
+                      "Courses",
+                      stats.coursesCompleted.toString(),
+                      Icons.book,
+                      AppTheme.accentPurple,
                     ),
                   ),
                 ],
               ),
-            ).animate().fadeIn().slideY(begin: -0.1, end: 0),
-
-            const SizedBox(height: 24),
-
-            // Achievements
-            _sectionTitle("ACHIEVEMENTS"),
-            const SizedBox(height: 12),
-            SizedBox(
-              height: 110,
-              child: achievements.isEmpty
-                  ? const Center(
-                      child: CircularProgressIndicator(
-                        color: AppTheme.primaryCyan,
-                      ),
-                    )
-                  : ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: achievements.length,
-                      itemBuilder: (context, index) {
-                        final achievement = achievements[index];
-                        return _achievementBadge(
-                          achievement.emoji,
-                          achievement.name,
-                          achievement.isUnlocked
-                              ? _getAchievementColor(achievement.category)
-                              : Colors.grey,
-                          isLocked: !achievement.isUnlocked,
-                          requirement: achievement.requirement,
-                        );
-                      },
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _statCard(
+                      "Streak",
+                      "${stats.currentStreak} days",
+                      Icons.local_fire_department,
+                      Colors.orange,
                     ),
-            ),
-
-            const SizedBox(height: 24),
-
-            // Stats
-            _sectionTitle("STATISTICS"),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: _statCard(
-                    "Battles Won",
-                    stats.battlesWon.toString(),
-                    Icons.sports_esports,
-                    AppTheme.primaryCyan,
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _statCard(
-                    "Courses",
-                    stats.coursesCompleted.toString(),
-                    Icons.book,
-                    AppTheme.accentPurple,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: _statCard(
-                    "Streak",
-                    "${stats.currentStreak} days",
-                    Icons.local_fire_department,
-                    Colors.orange,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _statCard(
-                    "Total XP",
-                    stats.totalXp.toString(),
-                    Icons.bolt,
-                    Colors.green,
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 24),
-
-            // Menu Items
-            _menuItem(
-              context,
-              Icons.settings,
-              "Settings",
-              () => context.push('/profile/settings'),
-            ),
-            _menuItem(
-              context,
-              Icons.help_outline,
-              "Help & Support",
-              () => context.push('/profile/help'),
-            ),
-            _menuItem(
-              context,
-              Icons.privacy_tip_outlined,
-              "Privacy Policy",
-              () => context.push('/profile/privacy'),
-            ),
-
-            // Logout Button - Redesigned
-            const SizedBox(height: 8),
-            GestureDetector(
-              onTap: () => _showLogoutDialog(context, ref),
-              child: Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.red.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.red.withOpacity(0.4)),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.red.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(Icons.logout, color: Colors.red),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _statCard(
+                      "Total XP",
+                      stats.totalXp.toString(),
+                      Icons.bolt,
+                      Colors.green,
                     ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Text(
-                        "Logout",
-                        style: AppTheme.bodyMedium.copyWith(
-                          color: Colors.red,
-                          fontWeight: FontWeight.bold,
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 24),
+
+              // Menu Items
+              _menuItem(
+                context,
+                Icons.settings,
+                "Settings",
+                () => context.push('/profile/settings'),
+              ),
+              _menuItem(
+                context,
+                Icons.help_outline,
+                "Help & Support",
+                () => context.push('/profile/help'),
+              ),
+              _menuItem(
+                context,
+                Icons.card_membership_rounded,
+                "Certificates",
+                () => context.push('/profile/certificates'),
+              ),
+              _menuItem(
+                context,
+                Icons.privacy_tip_outlined,
+                "Privacy Policy",
+                () => context.push('/profile/privacy'),
+              ),
+
+              // Logout Button - Redesigned
+              const SizedBox(height: 8),
+              GestureDetector(
+                onTap: () => _showLogoutDialog(context, ref),
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.red.withOpacity(0.4)),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.red.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(Icons.logout, color: Colors.red),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Text(
+                          "Logout",
+                          style: AppTheme.bodyMedium.copyWith(
+                            color: Colors.red,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
-                    ),
-                    const Icon(Icons.chevron_right, color: Colors.red),
-                  ],
+                      const Icon(Icons.chevron_right, color: Colors.red),
+                    ],
+                  ),
                 ),
               ),
-            ),
 
-            const SizedBox(height: 100),
-          ],
+              const SizedBox(height: 100),
+            ],
+          ),
+        ),
         ),
       ),
     );

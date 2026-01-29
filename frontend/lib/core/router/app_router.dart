@@ -25,6 +25,8 @@ import '../../features/profile/screens/help_support_screen.dart';
 import '../../features/profile/screens/privacy_policy_screen.dart';
 import '../../features/profile/screens/service_agent_chat_screen.dart';
 import '../../features/leaderboard/leaderboard_screen.dart';
+import '../../features/certificates/screens/certificates_screen.dart';
+import '../../features/certificates/screens/certificate_verification_screen.dart';
 import '../../shared/widgets/scaffold_with_nav_bar.dart';
 
 // Instructor Imports
@@ -226,6 +228,14 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/profile/privacy',
         builder: (context, state) => const PrivacyPolicyScreen(),
+      ),
+      GoRoute(
+        path: '/profile/certificates',
+        builder: (context, state) => const CertificatesScreen(),
+      ),
+      GoRoute(
+        path: '/profile/certificates/verify',
+        builder: (context, state) => const CertificateVerificationScreen(),
       ),
       GoRoute(
         path: '/profile/help/chat',

@@ -10,7 +10,6 @@ import '../../core/providers/user_state.dart';
 import '../../core/providers/auth_state.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
 
 class OtpVerificationScreen extends ConsumerStatefulWidget {
   final String email;

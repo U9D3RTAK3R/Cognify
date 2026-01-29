@@ -4,6 +4,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/providers/gamification_state.dart';
+import '../../core/theme/app_animations.dart';
+import '../../shared/animations/breathing_card.dart';
 
 class LeaderboardScreen extends ConsumerWidget {
   const LeaderboardScreen({super.key});
@@ -34,23 +36,24 @@ class LeaderboardScreen extends ConsumerWidget {
           ? const Center(
               child: CircularProgressIndicator(color: AppTheme.primaryCyan),
             )
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  // Podium for top 3
-                  if (leaderboard.length >= 3) _buildPodium(leaderboard),
-                  const SizedBox(height: 24),
+          : AppAnimations.pageTransitionWrapper(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    // Podium for top 3
+                    if (leaderboard.length >= 3) _buildPodium(leaderboard),
+                    const SizedBox(height: 24),
 
-                  // Rest of leaderboard (4-10)
-                  if (leaderboard.length > 3)
-                    ...leaderboard
-                        .skip(3)
-                        .map((entry) => _buildLeaderboardItem(entry))
-                        .toList(),
+                    // Rest of leaderboard (4-10)
+                    if (leaderboard.length > 3)
+                      ...leaderboard
+                          .skip(3)
+                          .map((entry) => _buildLeaderboardItem(entry)),
 
-                  const SizedBox(height: 80),
-                ],
+                    const SizedBox(height: 80),
+                  ],
+                ),
               ),
             ),
     );
@@ -61,61 +64,64 @@ class LeaderboardScreen extends ConsumerWidget {
     final second = leaderboard[1];
     final third = leaderboard[2];
 
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [AppTheme.cardColor, AppTheme.bgBlack],
+    return BreathingCard(
+      glowColor: Colors.amber,
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [AppTheme.cardColor, AppTheme.bgBlack],
+          ),
+          borderRadius: BorderRadius.circular(24),
         ),
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: Column(
-        children: [
-          Text(
-            "TOP CHAMPIONS",
-            style: AppTheme.labelLarge.copyWith(
-              color: Colors.amber,
-              letterSpacing: 2,
+        child: Column(
+          children: [
+            Text(
+              "TOP CHAMPIONS",
+              style: AppTheme.labelLarge.copyWith(
+                color: Colors.amber,
+                letterSpacing: 2,
+              ),
             ),
-          ),
-          const SizedBox(height: 24),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              // 2nd Place (Silver)
-              _buildPodiumPlace(
-                entry: second,
-                height: 100,
-                color: const Color(0xFFC0C0C0),
-                medal: "🥈",
-              ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.3),
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                // 2nd Place (Silver)
+                _buildPodiumPlace(
+                  entry: second,
+                  height: 100,
+                  color: const Color(0xFFC0C0C0),
+                  medal: "🥈",
+                ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.3),
 
-              const SizedBox(width: 8),
+                const SizedBox(width: 8),
 
-              // 1st Place (Gold)
-              _buildPodiumPlace(
-                entry: first,
-                height: 140,
-                color: const Color(0xFFFFD700),
-                medal: "🥇",
-                isWinner: true,
-              ).animate().fadeIn(delay: 100.ms).slideY(begin: 0.3),
+                // 1st Place (Gold)
+                _buildPodiumPlace(
+                  entry: first,
+                  height: 140,
+                  color: const Color(0xFFFFD700),
+                  medal: "🥇",
+                  isWinner: true,
+                ).animate().fadeIn(delay: 100.ms).slideY(begin: 0.3),
 
-              const SizedBox(width: 8),
+                const SizedBox(width: 8),
 
-              // 3rd Place (Bronze)
-              _buildPodiumPlace(
-                entry: third,
-                height: 80,
-                color: const Color(0xFFCD7F32),
-                medal: "🥉",
-              ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.3),
-            ],
-          ),
-        ],
+                // 3rd Place (Bronze)
+                _buildPodiumPlace(
+                  entry: third,
+                  height: 80,
+                  color: const Color(0xFFCD7F32),
+                  medal: "🥉",
+                ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.3),
+              ],
+            ),
+          ],
+        ),
       ),
     ).animate().fadeIn().scale(begin: const Offset(0.95, 0.95));
   }

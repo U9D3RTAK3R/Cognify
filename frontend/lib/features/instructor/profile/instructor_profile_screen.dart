@@ -6,6 +6,8 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/providers/instructor_state.dart';
 import '../../../core/providers/user_state.dart';
 import '../../../core/providers/auth_state.dart';
+import '../../../shared/animations/ambient_background.dart';
+import '../../../shared/animations/breathing_card.dart';
 
 class InstructorProfileScreen extends ConsumerWidget {
   const InstructorProfileScreen({super.key});
@@ -16,12 +18,13 @@ class InstructorProfileScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: AppTheme.bgBlack,
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            const SizedBox(height: 40),
-            // Profile Header
+      body: AmbientBackground(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              const SizedBox(height: 40),
+              // Profile Header
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
@@ -123,6 +126,12 @@ class InstructorProfileScreen extends ConsumerWidget {
             const SizedBox(height: 24),
 
             // Menu Items
+            _menuItem(
+              context,
+              Icons.card_membership,
+              "Manage Certificates",
+              () => context.push('/profile/certificates'), // Reusing certificate screen as history/manage
+            ),
             _menuItem(
               context,
               Icons.edit_outlined,
@@ -233,6 +242,7 @@ class InstructorProfileScreen extends ConsumerWidget {
             const SizedBox(height: 100),
           ],
         ),
+      ),
       ),
     );
   }
