@@ -268,14 +268,16 @@ class _CourseDetailScreenState extends ConsumerState<CourseDetailScreen> {
               ],
             ),
             ElevatedButton(
-              onPressed: () {
-                controller.enrollCourse(course.id);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text("Course enrolled! (Payment simulated)"),
-                  ),
-                );
-                setState(() {}); // Refresh UI
+              onPressed: () async {
+                await controller.enrollCourse(course.id);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("Course enrolled! (Payment simulated)"),
+                    ),
+                  );
+                  setState(() {}); // Refresh UI
+                }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.primaryCyan,

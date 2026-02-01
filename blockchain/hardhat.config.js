@@ -16,6 +16,10 @@ module.exports = {
         hardhat: {
             chainId: 1337
         },
+        localhost: {
+            url: "http://127.0.0.1:8545",
+            chainId: 1337
+        },
         mumbai: {
             url: process.env.POLYGON_MUMBAI_RPC || "https://rpc-mumbai.maticvigil.com",
             accounts: process.env.DEPLOYER_PRIVATE_KEY ? [process.env.DEPLOYER_PRIVATE_KEY] : [],

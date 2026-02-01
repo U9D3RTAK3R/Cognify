@@ -285,6 +285,7 @@ func AddCommentHandler(w http.ResponseWriter, r *http.Request) {
 		AuthorName  string `json:"authorName"`
 		AvatarEmoji string `json:"avatarEmoji"`
 		Content     string `json:"content"`
+		ParentID    string `json:"parentId"` // Added
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -301,6 +302,7 @@ func AddCommentHandler(w http.ResponseWriter, r *http.Request) {
 		AuthorName:  req.AuthorName,
 		AvatarEmoji: req.AvatarEmoji,
 		Content:     req.Content,
+		ParentID:    req.ParentID, // Populate
 		CreatedAt:   time.Now(),
 	}
 

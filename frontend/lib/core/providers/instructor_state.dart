@@ -66,8 +66,9 @@ class CourseQuestion {
 
 class InstructorCourse {
   final String id;
-  final String instructorId; // Added for sync fix
+  final String instructorId;
   String title;
+  String subtitle; // Added
   int studentCount;
   int progress;
   String duration;
@@ -76,8 +77,9 @@ class InstructorCourse {
 
   InstructorCourse({
     required this.id,
-    this.instructorId = '', // Default empty, but should be populated
+    this.instructorId = '',
     required this.title,
+    this.subtitle = '', // Default empty
     this.studentCount = 0,
     this.progress = 0,
     this.duration = '10h',
@@ -87,17 +89,18 @@ class InstructorCourse {
 
   InstructorCourse copyWith({
     String? title,
+    String? subtitle,
     int? studentCount,
     int? progress,
     String? duration,
     String? instructorName,
     List<CourseLevel>? levels,
   }) {
-    // instructorId is immutable for now in copyWith as it doesn't change
     return InstructorCourse(
       id: id,
       instructorId: instructorId,
       title: title ?? this.title,
+      subtitle: subtitle ?? this.subtitle,
       studentCount: studentCount ?? this.studentCount,
       progress: progress ?? this.progress,
       duration: duration ?? this.duration,
@@ -347,8 +350,9 @@ class InstructorStateNotifier extends Notifier<InstructorState> {
 
     return InstructorCourse(
       id: json['id'],
-      instructorId: json['instructorId'] ?? '', // Map from backend
+      instructorId: json['instructorId'] ?? '',
       title: json['title'],
+      subtitle: json['subtitle'] ?? '', // Map subtitle
       studentCount: 0,
       progress: (json['progress'] ?? 0).toInt(),
       duration: json['duration'] ?? '10h',
@@ -452,7 +456,7 @@ class InstructorStateNotifier extends Notifier<InstructorState> {
 
   // --- Course Management Methods ---
 
-  Future<void> addCourse(String title) async {
+  Future<void> addCourse(String title, String subtitle) async {
     final userState = ref.read(userStateProvider);
 
     // Harden: Ensure we have valid user data
@@ -475,13 +479,12 @@ class InstructorStateNotifier extends Notifier<InstructorState> {
 
     if (instructorId.isEmpty) {
       debugPrint('Error: Cannot create course without Instructor ID');
-      // In a real app, show error to user. For now, use a fallback for dev if needed, or return.
-      // returning to avoid bad state
       return;
     }
 
     final newCourseData = {
       'title': title,
+      'subtitle': subtitle, // Send subtitle
       'instructorId': instructorId,
       'instructorName': instructorName.isNotEmpty
           ? instructorName

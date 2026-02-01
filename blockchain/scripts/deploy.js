@@ -14,7 +14,7 @@ async function main() {
     console.log("💰 Account balance:", hre.ethers.formatEther(balance), "MATIC");
 
     // Deploy contract
-    const CertificateRegistry = await hre.ethers.getContractFactory("CertificateRegistry");
+    const CertificateRegistry = await hre.ethers.getContractFactory("SoulboundCertificateRegistry");
     const registry = await CertificateRegistry.deploy();
 
     await registry.waitForDeployment();

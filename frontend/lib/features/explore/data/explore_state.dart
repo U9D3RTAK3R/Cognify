@@ -274,7 +274,7 @@ class ExploreController extends Notifier<ExploreState> {
     }
   }
 
-  void enrollCourse(String courseId) async {
+  Future<void> enrollCourse(String courseId) async {
     final userId = ref.read(userStateProvider).profile.id;
 
     // Call backend API to enroll
