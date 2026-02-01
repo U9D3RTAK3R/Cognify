@@ -65,7 +65,7 @@ func SendOTPEmail(toEmail, otpCode string) error {
 `, otpCode)
 
 	payload := map[string]interface{}{
-		"from":    "Cognify <onboarding@resend.dev>", // Use verified domain in prod or onboarding@resend.dev for test
+		"from":    "Cognify <onboarding@cognify.localplayer.dev>", // Use verified domain in prod or onboarding@resend.dev for test
 		"to":      []string{toEmail},
 		"subject": "Your Cognify Verification Code",
 		"html":    htmlBody,

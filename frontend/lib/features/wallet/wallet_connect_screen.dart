@@ -15,7 +15,7 @@ class _WalletConnectScreenState extends State<WalletConnectScreen> {
   final _metamaskService = MetaMaskService();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
-  
+
   bool _isConnecting = false;
   bool _isAuthenticating = false;
   String? _connectedWallet;
@@ -29,7 +29,7 @@ class _WalletConnectScreenState extends State<WalletConnectScreen> {
 
   Future<void> _initializeService() async {
     await _metamaskService.initialize();
-    if (_metamaskService.isConnected) {
+    if (_metamaskService.connectedWallet != null) {
       setState(() {
         _connectedWallet = _metamaskService.connectedWallet;
       });
@@ -135,9 +135,9 @@ class _WalletConnectScreenState extends State<WalletConnectScreen> {
                     color: Colors.white,
                   ),
                 ),
-                
+
                 const SizedBox(height: 32),
-                
+
                 // Title
                 const Text(
                   'Connect Your Wallet',
@@ -147,9 +147,9 @@ class _WalletConnectScreenState extends State<WalletConnectScreen> {
                     color: Colors.white,
                   ),
                 ),
-                
+
                 const SizedBox(height: 12),
-                
+
                 // Subtitle
                 Text(
                   'Sign in with MetaMask to access Cognify',
@@ -159,9 +159,9 @@ class _WalletConnectScreenState extends State<WalletConnectScreen> {
                   ),
                   textAlign: TextAlign.center,
                 ),
-                
+
                 const SizedBox(height: 48),
-                
+
                 // Wallet Status
                 if (_connectedWallet != null) ...[
                   Container(
@@ -203,7 +203,9 @@ class _WalletConnectScreenState extends State<WalletConnectScreen> {
                                 ),
                               ),
                               Text(
-                                MetaMaskService.formatAddress(_connectedWallet!),
+                                MetaMaskService.formatAddress(
+                                  _connectedWallet!,
+                                ),
                                 style: TextStyle(
                                   color: Colors.white.withOpacity(0.7),
                                   fontSize: 12,
@@ -215,16 +217,18 @@ class _WalletConnectScreenState extends State<WalletConnectScreen> {
                       ],
                     ),
                   ),
-                  
+
                   const SizedBox(height: 32),
-                  
+
                   // Name Input
                   TextField(
                     controller: _nameController,
                     style: const TextStyle(color: Colors.white),
                     decoration: InputDecoration(
                       labelText: 'Your Name',
-                      labelStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
+                      labelStyle: TextStyle(
+                        color: Colors.white.withOpacity(0.7),
+                      ),
                       filled: true,
                       fillColor: const Color(0xFF1E293B),
                       border: OutlineInputBorder(
@@ -246,9 +250,9 @@ class _WalletConnectScreenState extends State<WalletConnectScreen> {
                       ),
                     ),
                   ),
-                  
+
                   const SizedBox(height: 16),
-                  
+
                   // Email Input (Optional)
                   TextField(
                     controller: _emailController,
@@ -256,7 +260,9 @@ class _WalletConnectScreenState extends State<WalletConnectScreen> {
                     keyboardType: TextInputType.emailAddress,
                     decoration: InputDecoration(
                       labelText: 'Email (Optional)',
-                      labelStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
+                      labelStyle: TextStyle(
+                        color: Colors.white.withOpacity(0.7),
+                      ),
                       filled: true,
                       fillColor: const Color(0xFF1E293B),
                       border: OutlineInputBorder(
@@ -278,9 +284,9 @@ class _WalletConnectScreenState extends State<WalletConnectScreen> {
                       ),
                     ),
                   ),
-                  
+
                   const SizedBox(height: 32),
-                  
+
                   // Authenticate Button
                   AnimatedNeonButton(
                     text: _isAuthenticating ? 'Authenticating...' : 'Sign In',
@@ -299,9 +305,9 @@ class _WalletConnectScreenState extends State<WalletConnectScreen> {
                     ),
                   ),
                 ],
-                
+
                 const SizedBox(height: 24),
-                
+
                 // Error Message
                 if (_errorMessage != null)
                   Container(
@@ -317,15 +323,13 @@ class _WalletConnectScreenState extends State<WalletConnectScreen> {
                       textAlign: TextAlign.center,
                     ),
                   ),
-                
+
                 const SizedBox(height: 32),
-                
+
                 // Info Text
                 Text(
                   'Don\'t have MetaMask?',
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.7),
-                  ),
+                  style: TextStyle(color: Colors.white.withOpacity(0.7)),
                 ),
                 const SizedBox(height: 8),
                 TextButton(
@@ -333,12 +337,17 @@ class _WalletConnectScreenState extends State<WalletConnectScreen> {
                     // Open MetaMask download page
                     final url = Uri.parse('https://metamask.io/download/');
                     if (await canLaunchUrl(url)) {
-                      await launchUrl(url, mode: LaunchMode.externalApplication);
+                      await launchUrl(
+                        url,
+                        mode: LaunchMode.externalApplication,
+                      );
                     } else {
                       if (mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                            content: Text('Could not open MetaMask download page'),
+                            content: Text(
+                              'Could not open MetaMask download page',
+                            ),
                             backgroundColor: Colors.red,
                           ),
                         );

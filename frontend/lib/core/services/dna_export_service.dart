@@ -1,12 +1,13 @@
-import 'dart:ui' as ui;
+// ignore: avoid_web_libraries_in_flutter
+import 'dart:html' as html;
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:screenshot/screenshot.dart';
 import '../../../core/theme/app_theme.dart';
 
 class DNAExportService {
-  static final ScreenshotController _screenshotController = ScreenshotController();
+  static final ScreenshotController _screenshotController =
+      ScreenshotController();
 
   /// Export DNA visualization as PNG image
   static Future<void> exportDNAAsImage({
@@ -72,10 +73,7 @@ class DNAExportService {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              const Color(0xFF0A0E27),
-              const Color(0xFF1a1f3a),
-            ],
+            colors: [const Color(0xFF0A0E27), const Color(0xFF1a1f3a)],
           ),
         ),
         child: Column(
@@ -94,19 +92,12 @@ class DNAExportService {
             const SizedBox(height: 20),
             const Text(
               'Academic DNA Identity',
-              style: TextStyle(
-                color: Colors.white70,
-                fontSize: 24,
-              ),
+              style: TextStyle(color: Colors.white70, fontSize: 24),
             ),
             const SizedBox(height: 60),
 
             // DNA Visualization
-            SizedBox(
-              width: 600,
-              height: 400,
-              child: dnaWidget,
-            ),
+            SizedBox(width: 600, height: 400, child: dnaWidget),
 
             const SizedBox(height: 60),
 
@@ -198,12 +189,12 @@ class DNAExportService {
     // For mobile: save to gallery
     try {
       // Web download
-      final blob = ui.Blob([imageBytes], 'image/png');
-      final url = ui.Url.createObjectUrlFromBlob(blob);
-      final anchor = ui.AnchorElement(href: url)
+      final blob = html.Blob([imageBytes], 'image/png');
+      final url = html.Url.createObjectUrlFromBlob(blob);
+      final anchor = html.AnchorElement(href: url)
         ..setAttribute('download', '$fileName.png')
         ..click();
-      ui.Url.revokeObjectUrl(url);
+      html.Url.revokeObjectUrl(url);
     } catch (e) {
       // Mobile save (would need additional packages like image_gallery_saver)
       if (context.mounted) {

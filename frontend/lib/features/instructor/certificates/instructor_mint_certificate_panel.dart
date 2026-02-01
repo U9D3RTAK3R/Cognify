@@ -9,7 +9,7 @@ import '../../../core/services/blockchain_service.dart';
 class InstructorMintCertificatePanel extends StatefulWidget {
   final String instructorWallet;
   final String instructorName;
-  
+
   const InstructorMintCertificatePanel({
     Key? key,
     required this.instructorWallet,
@@ -28,7 +28,7 @@ class _InstructorMintCertificatePanelState
   final _studentNameController = TextEditingController();
   final _courseNameController = TextEditingController();
   final _marksController = TextEditingController();
-  
+
   bool _isMinting = false;
 
   @override
@@ -48,28 +48,33 @@ class _InstructorMintCertificatePanelState
     setState(() => _isMinting = true);
 
     try {
-      // 1. Call Backend & Blockchain via Service
-      // This is the Production-Ready Flow
-      final blockchainService = BlockchainService(); // Inject this
+      // Call Backend & Blockchain via Service
+      final blockchainService = BlockchainService();
       final mintResponse = await blockchainService.mintCertificate(
         studentWallet: _studentWalletController.text,
         studentName: _studentNameController.text,
         courseName: _courseNameController.text,
+        courseId:
+            'COURSE_${DateTime.now().millisecondsSinceEpoch}', // Generate or get from context
+        userId: _studentWalletController.text, // Use wallet as user ID for now
         marks: double.parse(_marksController.text),
-        instructorAuthToken: "mock_token", // Retrieval from Auth Provider
-        instructorWallet: widget.instructorWallet, // Pass wallet address
+        instructorWallet: widget.instructorWallet,
       );
-      
-      // Simulating the Service Call execution for Audit
-      await Future.delayed(const Duration(seconds: 2));
-      const mockBackendDNA = "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6";
 
       if (mounted) {
-        _showSuccess('Certificate minted successfully on Blockchain! DNA: ${mockBackendDNA.substring(0, 8)}...');
+        final academicDNA = mintResponse['academicDNA'] as String? ?? '';
+        final txHash = mintResponse['transactionHash'] as String? ?? '';
+        _showSuccess(
+          'Certificate minted successfully!\n'
+          'DNA: ${academicDNA.length > 16 ? '${academicDNA.substring(0, 8)}...${academicDNA.substring(academicDNA.length - 8)}' : academicDNA}\n'
+          'TX: ${txHash.length > 16 ? '${txHash.substring(0, 10)}...' : txHash}',
+        );
         _clearForm();
       }
     } catch (e) {
-      _showError('Failed to mint certificate: $e');
+      if (mounted) {
+        _showError('Failed to mint certificate: $e');
+      }
     } finally {
       if (mounted) {
         setState(() => _isMinting = false);
@@ -111,9 +116,7 @@ class _InstructorMintCertificatePanelState
       decoration: BoxDecoration(
         color: const Color(0xFF1E293B).withOpacity(0.6),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: const Color(0xFF6366F1).withOpacity(0.3),
-        ),
+        border: Border.all(color: const Color(0xFF6366F1).withOpacity(0.3)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.2),
@@ -169,9 +172,9 @@ class _InstructorMintCertificatePanelState
                   ),
                 ],
               ),
-              
+
               const SizedBox(height: 32),
-              
+
               // Student Wallet Address
               _buildTextField(
                 controller: _studentWalletController,
@@ -188,9 +191,9 @@ class _InstructorMintCertificatePanelState
                   return null;
                 },
               ),
-              
+
               const SizedBox(height: 20),
-              
+
               // Student Name
               _buildTextField(
                 controller: _studentNameController,
@@ -204,9 +207,9 @@ class _InstructorMintCertificatePanelState
                   return null;
                 },
               ),
-              
+
               const SizedBox(height: 20),
-              
+
               // Course Name
               _buildTextField(
                 controller: _courseNameController,
@@ -220,9 +223,9 @@ class _InstructorMintCertificatePanelState
                   return null;
                 },
               ),
-              
+
               const SizedBox(height: 20),
-              
+
               // Marks
               _buildTextField(
                 controller: _marksController,
@@ -241,9 +244,9 @@ class _InstructorMintCertificatePanelState
                   return null;
                 },
               ),
-              
+
               const SizedBox(height: 32),
-              
+
               // Info box
               Container(
                 padding: const EdgeInsets.all(16),
@@ -274,15 +277,17 @@ class _InstructorMintCertificatePanelState
                   ],
                 ),
               ),
-              
+
               const SizedBox(height: 24),
-              
+
               // Mint Button
               SizedBox(
                 width: double.infinity,
                 height: 56,
                 child: AnimatedNeonButton(
-                  text: _isMinting ? 'Minting...' : 'Mint Blockchain Certificate',
+                  text: _isMinting
+                      ? 'Minting...'
+                      : 'Mint Blockchain Certificate',
                   icon: _isMinting ? null : Icons.rocket_launch,
                   onPressed: _isMinting ? null : _mintCertificate,
                   gradient: const LinearGradient(
@@ -324,9 +329,7 @@ class _InstructorMintCertificatePanelState
           style: const TextStyle(color: Colors.white),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: TextStyle(
-              color: Colors.white.withOpacity(0.3),
-            ),
+            hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
             filled: true,
             fillColor: Colors.black.withOpacity(0.3),
             border: OutlineInputBorder(
@@ -341,21 +344,13 @@ class _InstructorMintCertificatePanelState
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(
-                color: Color(0xFF6366F1),
-                width: 2,
-              ),
+              borderSide: const BorderSide(color: Color(0xFF6366F1), width: 2),
             ),
             errorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(
-                color: Color(0xFFEF4444),
-              ),
+              borderSide: const BorderSide(color: Color(0xFFEF4444)),
             ),
-            prefixIcon: Icon(
-              icon,
-              color: const Color(0xFF6366F1),
-            ),
+            prefixIcon: Icon(icon, color: const Color(0xFF6366F1)),
           ),
         ),
       ],

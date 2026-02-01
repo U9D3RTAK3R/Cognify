@@ -26,6 +26,9 @@ type Config struct {
 	ChainID             int64
 	GasLimit            uint64
 	MaxGasPrice         *big.Int
+
+	// Platform Secret (for Academic DNA generation)
+	PlatformSecret string
 }
 
 var AppConfig Config
@@ -49,6 +52,7 @@ func Load() {
 		EncryptionPass:      getEnv("ENCRYPTION_PASSPHRASE", ""),
 		ChainID:             getEnvInt64("CHAIN_ID", 80001), // Default to Mumbai
 		GasLimit:            getEnvUint64("GAS_LIMIT", 300000),
+		PlatformSecret:      getEnv("PLATFORM_SECRET", "COGNIFY_PLATFORM_SECRET_V1"),
 	}
 
 	// Parse max gas price

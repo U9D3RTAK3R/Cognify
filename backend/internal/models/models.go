@@ -129,6 +129,7 @@ type Certificate struct {
 	TrustScore        int     `firestore:"trust_score" json:"trustScore,omitempty"`
 	VerificationCount int     `firestore:"verification_count" json:"verificationCount,omitempty"`
 	Revoked           bool    `firestore:"revoked" json:"revoked,omitempty"`
+	IsMinted          bool    `firestore:"is_minted" json:"isMinted,omitempty"`
 
 	// Academic DNA Identity (NEW)
 	AcademicDNA string `firestore:"academic_dna" json:"academicDNA,omitempty"`

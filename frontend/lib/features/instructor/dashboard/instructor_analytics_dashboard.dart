@@ -168,15 +168,19 @@ class _InstructorAnalyticsDashboardState
                       ),
                     ),
                     plotAreaBorderWidth: 0,
-                    series: <ChartSeries>[
+                    series: <CartesianSeries<ChartData, String>>[
                       SplineAreaSeries<ChartData, String>(
                         dataSource: _monthlyData,
                         xValueMapper: (ChartData data, _) => data.month,
                         yValueMapper: (ChartData data, _) => data.count,
-                        gradient: LinearGradient(
+                        gradient: const LinearGradient(
                           colors: [
-                            AppTheme.primaryCyan.withOpacity(0.5),
-                            AppTheme.accentPurple.withOpacity(0.1),
+                            Color(
+                              0x8000D9FF,
+                            ), // AppTheme.primaryCyan with 50% opacity
+                            Color(
+                              0x1AA855F7,
+                            ), // AppTheme.accentPurple with 10% opacity
                           ],
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
@@ -263,10 +267,7 @@ class _InstructorAnalyticsDashboardState
               const SizedBox(height: 4),
               Text(
                 label,
-                style: TextStyle(
-                  color: AppTheme.textGrey,
-                  fontSize: 12,
-                ),
+                style: TextStyle(color: AppTheme.textGrey, fontSize: 12),
               ),
             ],
           ),
@@ -281,10 +282,7 @@ class _InstructorAnalyticsDashboardState
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label,
-            style: TextStyle(color: AppTheme.textGrey, fontSize: 14),
-          ),
+          Text(label, style: TextStyle(color: AppTheme.textGrey, fontSize: 14)),
           Text(
             value,
             style: const TextStyle(

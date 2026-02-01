@@ -1,10 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../services/api_service.dart';
-import '../../services/metamask_service.dart';
+import 'api_service.dart';
+import 'metamask_service.dart';
 
 // Standalone service for Nonce-based Auth
 class NonceAuthService {
-  final Meta(MaskService _metaMask = MetaMaskService();
+  final MetaMaskService _metaMask = MetaMaskService();
 
   Future<Map<String, dynamic>> loginWithWallet(String walletAddress) async {
     try {
@@ -15,13 +15,13 @@ class NonceAuthService {
 
       if (nonceRes['nonce'] == null) throw Exception("Failed to get nonce");
       final nonce = nonceRes['nonce'];
-      final message = nonceRes['message']; 
+      final message = nonceRes['message'];
 
       // 2. Sign Message
       // Using MetaMaskService to sign
-      final signature = await _metaMask.signMessage(message); 
-      
-      if (signature == null) throw Exception("User rejected signature"); 
+      final signature = await _metaMask.signMessage(message);
+
+      if (signature == null) throw Exception("User rejected signature");
 
       // 3. Verify Signature & Login
       final loginRes = await ApiService.post('/api/auth/login/wallet', {
