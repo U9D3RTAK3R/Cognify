@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:async';
 import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
+import 'package:cognify/core/config/api_config.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -118,7 +119,7 @@ class MetaMaskService {
       // 1. Get Nonce from Backend
       final nonceResponse = await http.post(
         Uri.parse(
-          'http://localhost:8080/api/auth/nonce',
+          '${ApiConfig.apiUrl}/auth/nonce',
         ), // Use correct backend URL
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'walletAddress': _connectedWallet}),
@@ -139,7 +140,7 @@ class MetaMaskService {
 
       // 3. Send Signature to Backend
       final response = await http.post(
-        Uri.parse('http://localhost:8080/api/auth/login/wallet'),
+        Uri.parse('${ApiConfig.apiUrl}/auth/login/wallet'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'walletAddress': _connectedWallet,

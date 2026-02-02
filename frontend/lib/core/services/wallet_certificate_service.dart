@@ -1,10 +1,11 @@
+import 'package:cognify/core/config/api_config.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 /// API service for wallet-based certificate operations
 class WalletCertificateService {
-  static const String baseUrl = 'http://localhost:8080/api';
+  static const String baseUrl = ApiConfig.apiUrl;
   
   /// Get certificate history for a wallet address
   static Future<Map<String, dynamic>?> getCertificateHistory(String walletAddress) async {

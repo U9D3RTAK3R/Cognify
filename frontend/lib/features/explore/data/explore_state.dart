@@ -1,7 +1,7 @@
 import 'dart:convert';
+import 'package:cognify/core/config/api_config.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
-import '../../../../core/constants/api_constants.dart';
 import '../../../core/providers/user_state.dart';
 
 enum CourseStatus { available, enrolled, ongoing, completed }
@@ -172,7 +172,7 @@ class ExploreController extends Notifier<ExploreState> {
   Future<void> _fetchCourses() async {
     try {
       final response = await http.get(
-        Uri.parse('${ApiConstants.baseUrl}/courses'),
+        Uri.parse('${ApiConfig.apiUrl}/courses'),
       );
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -207,7 +207,7 @@ class ExploreController extends Notifier<ExploreState> {
     try {
       final response = await http.get(
         Uri.parse(
-          '${ApiConstants.baseUrl}/courses/recommendations?userId=$userId',
+          '${ApiConfig.apiUrl}/courses/recommendations?userId=$userId',
         ),
       );
       if (response.statusCode == 200) {
@@ -233,7 +233,7 @@ class ExploreController extends Notifier<ExploreState> {
 
     try {
       final response = await http.get(
-        Uri.parse('${ApiConstants.baseUrl}/user/enrollments?userId=$userId'),
+        Uri.parse('${ApiConfig.apiUrl}/user/enrollments?userId=$userId'),
       );
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -280,7 +280,7 @@ class ExploreController extends Notifier<ExploreState> {
     // Call backend API to enroll
     try {
       await http.post(
-        Uri.parse('${ApiConstants.baseUrl}/courses/enroll'),
+        Uri.parse('${ApiConfig.apiUrl}/courses/enroll'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({'userId': userId, 'courseId': courseId}),
       );

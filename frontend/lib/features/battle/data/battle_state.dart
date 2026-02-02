@@ -1,7 +1,7 @@
 import 'dart:convert';
+import 'package:cognify/core/config/api_config.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
-import '../../../../core/constants/api_constants.dart';
 
 class Question {
   final String id;
@@ -97,7 +97,7 @@ class BattleController extends Notifier<BattleState> {
   Future<void> _fetchQuestions() async {
     try {
       final response = await http.get(
-        Uri.parse('${ApiConstants.baseUrl}/battles/questions'),
+        Uri.parse('${ApiConfig.apiUrl}/battles/questions'),
       );
 
       if (response.statusCode == 200) {

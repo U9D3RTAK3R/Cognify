@@ -11,7 +11,7 @@ class TrustAnalyticsService {
   Future<TrustAnalytics?> getTrustAnalytics(String certificateHash) async {
     try {
       final response = await http.get(
-        Uri.parse('${ApiConfig.baseUrl}/analytics/trust?hash=$certificateHash'),
+        Uri.parse('${ApiConfig.apiUrl}/analytics/trust?hash=$certificateHash'),
       );
 
       if (response.statusCode == 200) {
@@ -59,7 +59,7 @@ class TrustAnalyticsService {
   Future<Map<String, dynamic>?> getInstructorAnalytics(String walletAddress) async {
     try {
       final response = await http.get(
-        Uri.parse('${ApiConfig.baseUrl}/analytics/instructor?wallet=$walletAddress'),
+        Uri.parse('${ApiConfig.apiUrl}/analytics/instructor?wallet=$walletAddress'),
       );
 
       if (response.statusCode == 200) {
@@ -78,7 +78,7 @@ class TrustAnalyticsService {
   Future<bool> updateInstructorReputation(String walletAddress) async {
     try {
       final response = await http.post(
-        Uri.parse('${ApiConfig.baseUrl}/analytics/instructor/update-reputation?wallet=$walletAddress'),
+        Uri.parse('${ApiConfig.apiUrl}/analytics/instructor/update-reputation?wallet=$walletAddress'),
       );
 
       if (response.statusCode == 200) {
