@@ -1,13 +1,13 @@
 import 'dart:convert';
 import 'dart:async';
-// ignore: avoid_web_libraries_in_flutter
-import 'dart:html' as html;
+import 'dart:js_interop';
+import 'dart:js_interop_unsafe';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// MetaMask wallet service for Web3 authentication (Web-only)
-/// Uses JavaScript interop to communicate with MetaMask browser extension
+/// Uses dart:js_interop to communicate with MetaMask browser extension
 class MetaMaskService {
   static const String _walletKey = 'connected_wallet';
   static const String _userKey = 'user_data';
@@ -27,6 +27,7 @@ class MetaMaskService {
   /// Check if MetaMask is installed
   bool get isMetaMaskInstalled {
     if (!kIsWeb) return false;
+
     try {
       final ethereum = (html.window as dynamic).ethereum;
       return ethereum != null;
@@ -34,6 +35,10 @@ class MetaMaskService {
       debugPrint('Error checking MetaMask installation: $e');
       return false;
     }
+
+    // Check if 'ethereum' property exists on the global window object
+    return globalContext.has('ethereum');
+ 083ef00a4bd29bb43d3006a603da5f67937609af
   }
 
   /// Get connected wallet address
@@ -65,10 +70,19 @@ class MetaMaskService {
 
     try {
       // Request accounts from MetaMask
-      final accounts = await _callEthereumMethod('eth_requestAccounts', []);
+      // eth_requestAccounts takes no parameters usually, but we pass empty list
+      final accounts = await callMethod('eth_requestAccounts', []);
 
-      if (accounts != null && accounts is List && accounts.isNotEmpty) {
-        _connectedWallet = accounts[0] as String;
+      // Result is a JSArray of strings
+      // We need to verify what we get back. usually it's a List<dynamic> (from toDart)
+      // or we might need to cast.
+
+      final List<dynamic> accountList = (accounts as JSArray).toDart;
+
+      if (accountList.isNotEmpty) {
+        // The items in the list might be JSStrings, convert to Dart String
+        final account = (accountList[0] as JSString).toDart;
+        _connectedWallet = account;
         await _saveWallet(_connectedWallet!);
         return _connectedWallet;
       }
@@ -77,25 +91,6 @@ class MetaMaskService {
     } catch (e) {
       debugPrint('Error connecting wallet: $e');
       throw Exception('MetaMask Error: $e');
-    }
-  }
-
-  /// Listen for account changes
-  void listenToAccountChanges(Function(String?) onAccountChanged) {
-    if (!kIsWeb) return;
-
-    try {
-      final ethereum = (html.window as dynamic).ethereum;
-      if (ethereum == null) return;
-
-      // Use JavaScript callback for account changes
-      // Note: This requires the callback to be set up on the JS side
-      // For now, we'll skip this as it requires complex interop
-      debugPrint(
-        'Account change listener not fully implemented with dynamic invocation',
-      );
-    } catch (e) {
-      debugPrint('Error setting up account listener: $e');
     }
   }
 
@@ -113,12 +108,14 @@ class MetaMaskService {
       // Hex-encode the message for personal_sign
       final hexMessage = _toHex(message);
 
-      final signature = await _callEthereumMethod('personal_sign', [
+      // personal_sign params: [message, address]
+      // personal_sign params: [message, address]
+      final signature = await callMethod('personal_sign', [
         hexMessage,
         _connectedWallet,
       ]);
 
-      return signature as String?;
+      return (signature as JSString).toDart;
     } catch (e) {
       debugPrint('Error signing message: $e');
       return null;
@@ -144,7 +141,9 @@ class MetaMaskService {
     try {
       // 1. Get Nonce from Backend
       final nonceResponse = await http.post(
-        Uri.parse('http://localhost:8080/api/auth/nonce'),
+        Uri.parse(
+          'http://localhost:8080/api/auth/nonce',
+        ), // Use correct backend URL
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'walletAddress': _connectedWallet}),
       );
@@ -170,6 +169,7 @@ class MetaMaskService {
           'walletAddress': _connectedWallet,
           'signature': signature,
           'email': email,
+          'role': role,
         }),
       );
 
@@ -192,27 +192,52 @@ class MetaMaskService {
     await _clearSavedData();
   }
 
-  /// Call Ethereum method via MetaMask using dynamic invocation
-  Future<dynamic> _callEthereumMethod(
-    String method,
-    List<dynamic> params,
-  ) async {
+  /// Call Ethereum method via MetaMask using dart:js_interop
+  Future<JSAny?> callMethod(String method, List<dynamic> params) async {
     if (!kIsWeb) {
       throw UnsupportedError('MetaMask is only supported on web');
     }
 
     try {
-      // Get ethereum object from window
-      final ethereum = (html.window as dynamic).ethereum;
+      // Get ethereum object from global context
+      final ethereum = globalContext['ethereum'] as JSObject?;
+
       if (ethereum == null) {
         throw Exception('MetaMask is not available');
       }
 
-      // Create request object
-      final request = {'method': method, 'params': params};
+      // Create request object { method: '...', params: [...] }
+      final requestObj = JSObject();
+      requestObj['method'] = method.toJS;
 
-      // Call ethereum.request() and await the result
-      final result = await (ethereum.request(request) as Future);
+      // Convert params list to Dart list of JSAny? first, then to JSArray
+      final List<JSAny?> jsParamsList = [];
+      for (var p in params) {
+        if (p is String) {
+          jsParamsList.add(p.toJS);
+        } else if (p is Map) {
+          // Convert Map to JSObject (e.g. for transaction params)
+          final paramObj = JSObject();
+          p.forEach((k, v) {
+            if (v is String) paramObj[k.toString()] = v.toJS;
+            // Add other types logic if needed
+          });
+          jsParamsList.add(paramObj);
+        } else if (p == null) {
+          jsParamsList.add(null);
+        } else if (p is JSAny) {
+          jsParamsList.add(p);
+        }
+      }
+
+      requestObj['params'] = jsParamsList.toJS;
+
+      // Call ethereum.request(requestObj)
+      // request returns a Promise
+      final promise = ethereum.callMethod('request'.toJS, requestObj);
+
+      // Convert Promise to Dart Future
+      final result = await (promise as JSPromise).toDart;
       return result;
     } catch (e) {
       debugPrint('Error calling Ethereum method: $e');

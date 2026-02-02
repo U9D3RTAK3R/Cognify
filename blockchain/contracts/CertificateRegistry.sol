@@ -86,7 +86,7 @@ contract CertificateRegistry {
      * @dev Verify if a certificate exists and get its details
      * @param _certHash SHA256 hash to verify
      * @return exists Whether certificate exists
-     * @return owner Address of the certificate owner
+     * @return certOwner Address of the certificate owner
      * @return issuer Address of the issuer
      * @return timestamp When certificate was minted
      * @return academicDNA Academic DNA identifier
@@ -97,7 +97,7 @@ contract CertificateRegistry {
         view 
         returns (
             bool exists, 
-            address owner, 
+            address certOwner, 
             address issuer, 
             uint256 timestamp,
             string memory academicDNA,
@@ -160,7 +160,7 @@ contract CertificateRegistry {
      * @dev Soulbound: Transfer is permanently disabled
      * @notice Certificates cannot be transferred to maintain academic integrity
      */
-    function transfer(bytes32 _certHash, address _to) external pure {
+    function transfer(bytes32 /*_certHash*/, address /*_to*/) external pure {
         revert("Soulbound: Certificates are non-transferable");
     }
     

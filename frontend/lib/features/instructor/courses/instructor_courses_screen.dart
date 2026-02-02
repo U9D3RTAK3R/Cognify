@@ -167,27 +167,49 @@ class InstructorCoursesScreen extends ConsumerWidget {
   }
 
   void _showCreateCourseDialog(BuildContext context, WidgetRef ref) {
-    final controller = TextEditingController();
+    final titleController = TextEditingController();
+    final subtitleController = TextEditingController();
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: AppTheme.cardColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text('Create New Course', style: AppTheme.headlineMedium),
-        content: TextField(
-          controller: controller,
-          style: const TextStyle(color: Colors.white),
-          autofocus: true,
-          decoration: InputDecoration(
-            hintText: 'Course Title',
-            hintStyle: TextStyle(color: AppTheme.textGrey),
-            filled: true,
-            fillColor: AppTheme.bgBlack,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none,
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: titleController,
+              style: const TextStyle(color: Colors.white),
+              autofocus: true,
+              decoration: InputDecoration(
+                hintText: 'Course Title',
+                hintStyle: TextStyle(color: AppTheme.textGrey),
+                filled: true,
+                fillColor: AppTheme.bgBlack,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+              ),
             ),
-          ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: subtitleController,
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                hintText: 'Magic Description (e.g. Complex UI Magic)',
+                hintStyle: TextStyle(color: AppTheme.textGrey),
+                filled: true,
+                fillColor: AppTheme.bgBlack,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+            ),
+          ],
         ),
         actions: [
           TextButton(
@@ -196,14 +218,14 @@ class InstructorCoursesScreen extends ConsumerWidget {
           ),
           ElevatedButton(
             onPressed: () {
-              if (controller.text.isNotEmpty) {
+              if (titleController.text.isNotEmpty) {
                 ref
                     .read(instructorStateProvider.notifier)
-                    .addCourse(controller.text);
+                    .addCourse(titleController.text, subtitleController.text);
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('Course "${controller.text}" created!'),
+                    content: Text('Course "${titleController.text}" created!'),
                     backgroundColor: Colors.orange,
                   ),
                 );

@@ -139,6 +139,7 @@ class Comment {
       downvotedBy: Set<String>.from(
         json['downvotedBy'] ?? json['DownvotedBy'] ?? [],
       ),
+      parentId: json['parentId'] ?? json['ParentId'],
     );
   }
 
@@ -243,16 +244,18 @@ class ForumController extends Notifier<ForumState> {
   Future<void> fetchCommentsForPost(String postId) async {
     try {
       final commentsData = await ForumService.fetchComments(postId: postId);
-      final comments = commentsData
+      final flatComments = commentsData
           .map((data) => Comment.fromJson(data))
           .toList();
+
+      final nestedComments = _buildCommentTree(flatComments);
 
       state = state.copyWith(
         posts: state.posts.map((p) {
           if (p.id == postId) {
             return p.copyWith(
-              comments: comments,
-              commentCount: comments.length,
+              comments: nestedComments,
+              commentCount: flatComments.length, // Total count includes replies
             );
           }
           return p;
@@ -262,6 +265,40 @@ class ForumController extends Notifier<ForumState> {
       // Silently fail - comments will just be empty
       print('Error fetching comments: $e');
     }
+  }
+
+  /// Helper to reconstruct comment tree from flat list
+  List<Comment> _buildCommentTree(List<Comment> flatComments) {
+    final commentMap = {for (var c in flatComments) c.id: c};
+    final List<Comment> roots = [];
+
+    // First pass: identify roots and grouping
+    final Map<String, List<Comment>> childrenMap = {};
+
+    for (var c in flatComments) {
+      if (c.parentId != null && commentMap.containsKey(c.parentId)) {
+        childrenMap.putIfAbsent(c.parentId!, () => []).add(c);
+      } else {
+        roots.add(c);
+      }
+    }
+
+    // Recursive helper to build tree
+    List<Comment> buildChildren(String parentId) {
+      final children = childrenMap[parentId] ?? [];
+      if (children.isEmpty) return [];
+
+      return children.map((c) {
+        final grandChildren = buildChildren(c.id);
+        return c.copyWith(replies: grandChildren);
+      }).toList();
+    }
+
+    // Build final tree
+    return roots.map((root) {
+      final children = buildChildren(root.id);
+      return root.copyWith(replies: children);
+    }).toList();
   }
 
   /// Increments view count for a post via backend API.
@@ -487,6 +524,7 @@ class ForumController extends Notifier<ForumState> {
       authorName: authorName ?? 'You',
       avatarEmoji: authorEmoji ?? '🧑',
       content: text,
+      parentId: parentCommentId, // Pass parentId
     );
   }
 

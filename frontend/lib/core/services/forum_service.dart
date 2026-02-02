@@ -109,6 +109,7 @@ class ForumService {
     required String authorName,
     required String avatarEmoji,
     required String content,
+    String? parentId, // Added optional parentId
   }) async {
     try {
       final response = await ApiService.post('/api/posts/comment', {
@@ -117,6 +118,7 @@ class ForumService {
         'authorName': authorName,
         'avatarEmoji': avatarEmoji,
         'content': content,
+        if (parentId != null) 'parentId': parentId, // Include if present
       });
       if (response['success'] == true && response['comment'] != null) {
         return Map<String, dynamic>.from(response['comment']);

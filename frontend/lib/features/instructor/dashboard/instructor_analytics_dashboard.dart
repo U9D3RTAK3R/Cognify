@@ -107,7 +107,7 @@ class _InstructorAnalyticsDashboardState
             physics: const NeverScrollableScrollPhysics(),
             mainAxisSpacing: 16,
             crossAxisSpacing: 16,
-            childAspectRatio: 1.5,
+            childAspectRatio: 1.1, // Adjusted for better mobile fit
             children: [
               _buildStatCard(
                 'Certificates Issued',

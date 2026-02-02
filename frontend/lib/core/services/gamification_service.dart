@@ -56,4 +56,19 @@ class GamificationService {
       return [];
     }
   }
+
+  /// Completes a battle and updates stats.
+  static Future<bool> completeBattle(String userId, bool win, int xp) async {
+    try {
+      final response = await ApiService.post('/api/battles/complete', {
+        'userId': userId,
+        'win': win,
+        'xp': xp,
+      });
+      return response['success'] == true;
+    } catch (e) {
+      print('Error completing battle: $e');
+      return false;
+    }
+  }
 }

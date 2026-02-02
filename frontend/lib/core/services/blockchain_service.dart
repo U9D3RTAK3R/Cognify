@@ -1,6 +1,5 @@
 import 'dart:convert';
-// ignore: avoid_web_libraries_in_flutter
-import 'dart:html' as html;
+import 'dart:js_interop';
 
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
@@ -109,30 +108,21 @@ class BlockchainService {
         'from': connectedWallet,
         'to': _contractAddress,
         'data': data,
-        'gas': '0x493E0', // 300000 gas limit
+        // 'gas': '0x493E0', // Let MetaMask estimate gas
       };
 
-      // Send transaction via MetaMask using dart:html directly
-      // Access ethereum object via JavaScript
-      final ethWindow = html.window;
+      // Call ethereum.request() via MetaMaskService
+      final result = await _metaMaskService.callMethod('eth_sendTransaction', [
+        txParams,
+      ]);
 
-      // Use JavaScript interop to access ethereum provider
-      final jsEthereum = (ethWindow as dynamic).ethereum;
-      if (jsEthereum == null) {
-        throw Exception('MetaMask is not available');
+      if (result != null) {
+        // Cast to JSString and convert to Dart String
+        // We need dart:js_interop for this
+        return (result as JSString).toDart;
       }
 
-      // Create the request parameters
-      final request = {
-        'method': 'eth_sendTransaction',
-        'params': [txParams],
-      };
-
-      // Call ethereum.request() via dynamic invocation
-      final result = await (jsEthereum.request(request) as Future);
-      final txHash = result.toString();
-
-      return txHash;
+      throw Exception('Transaction returned null');
     } catch (e) {
       if (e.toString().contains('User denied') ||
           e.toString().contains('rejected')) {

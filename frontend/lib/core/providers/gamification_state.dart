@@ -71,7 +71,7 @@ class UserStats {
   final int globalRank;
   final int forumPosts;
   final int forumComments;
-  final List<int> weeklyXp;
+  final Map<String, int> weeklyXp;
   final Map<String, int> categoryStats;
 
   UserStats({
@@ -86,7 +86,7 @@ class UserStats {
     this.globalRank = 42,
     this.forumPosts = 0,
     this.forumComments = 0,
-    this.weeklyXp = const [0, 0, 0, 0, 0, 0, 0],
+    this.weeklyXp = const {},
     this.categoryStats = const {},
   });
 
@@ -103,7 +103,7 @@ class UserStats {
       globalRank: json['globalRank'] ?? 42,
       forumPosts: json['forumPosts'] ?? 0,
       forumComments: json['forumComments'] ?? 0,
-      weeklyXp: List<int>.from(json['weeklyXp']?.map((x) => x) ?? []),
+      weeklyXp: Map<String, int>.from(json['weeklyXp'] ?? {}),
       categoryStats: Map<String, int>.from(json['categoryStats'] ?? {}),
     );
   }

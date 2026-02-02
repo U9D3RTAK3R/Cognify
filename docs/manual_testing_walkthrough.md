@@ -35,10 +35,10 @@ We need a local blockchain to simulate Ethereum.
     **Copy the deployed contract address** from the output (e.g., `0x5FbDB...`).
 
 4.  **Configure MetaMask:**
-    - Open MetaMask > Settings > Networks > Add Network > Add a network manually.
-    - **Network Name:** Hardhat Local
-    - **RPC URL:** `http://127.0.0.1:8545`
-    - **Chain ID:** `31337`
+    - Open MetaMask > Settings > Networks > **Add a network manually** (Do NOT use the default "Localhost 8545").
+    - **Network Name:** Hardhat Local (Custom)
+    - **RPC URL:** `http://127.0.0.1:8545` (Crucial: Use 127.0.0.1, NOT localhost)
+    - **Chain ID:** `1337`
     - **Currency Symbol:** ETH
     - **Save** and switch to this network.
     - **Import Account:** Copy the private key of "Account 0" (Instructor) from the "Hardhat Node" terminal and import it into MetaMask.

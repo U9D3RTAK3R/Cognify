@@ -4,6 +4,9 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/providers/user_state.dart';
+import '../../core/providers/auth_state.dart';
+import '../../core/providers/gamification_state.dart';
+import '../../core/services/gamification_service.dart';
 import 'data/battle_state.dart';
 import 'widgets/card_deck.dart';
 import 'widgets/boss_hp_bar.dart';
@@ -285,11 +288,21 @@ class _BattleScreenState extends ConsumerState<BattleScreen> {
                     const SizedBox(height: 24),
                     ElevatedButton(
                       onPressed: () {
-                        // Award XP and increment battles won
-                        ref.read(userStateProvider.notifier).addXp(150);
-                        ref
-                            .read(userStateProvider.notifier)
-                            .incrementBattlesWon();
+                        // Award XP and increment battles won via API
+                        final userId = ref.read(userStateProvider).profile.id;
+                        if (userId.isNotEmpty) {
+                          GamificationService.completeBattle(
+                            userId,
+                            true,
+                            150,
+                          ).then((success) {
+                            if (success) {
+                              // Refresh global stats
+                              ref.read(gamificationProvider.notifier).refresh();
+                            }
+                          });
+                        }
+
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
                             content: Text('+150 XP earned! 🎉'),

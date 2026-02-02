@@ -103,6 +103,7 @@ type Comment struct {
 	UpvotedBy   []string  `json:"upvotedBy" firestore:"upvotedBy"`
 	DownvotedBy []string  `json:"downvotedBy" firestore:"downvotedBy"`
 	CreatedAt   time.Time `json:"createdAt" firestore:"createdAt"`
+	ParentID    string    `json:"parentId,omitempty" firestore:"parentId,omitempty"` // Added for replies
 }
 
 type Certificate struct {

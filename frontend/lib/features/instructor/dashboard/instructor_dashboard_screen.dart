@@ -25,9 +25,7 @@ class InstructorDashboardScreen extends ConsumerWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const CircularProgressIndicator(
-                color: Colors.orange,
-              ),
+              const CircularProgressIndicator(color: Colors.orange),
               const SizedBox(height: 16),
               Text(
                 'Loading instructor dashboard...',
@@ -58,53 +56,59 @@ class InstructorDashboardScreen extends ConsumerWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.orange.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: Colors.orange.withOpacity(0.5),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.orange.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: Colors.orange.withOpacity(0.5),
+                                ),
+                              ),
+                              child: const Text(
+                                'INSTRUCTOR',
+                                style: TextStyle(
+                                  color: Colors.orange,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
-                            child: const Text(
-                              'INSTRUCTOR',
-                              style: TextStyle(
-                                color: Colors.orange,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          "Welcome back,",
+                          style: AppTheme.bodyMedium.copyWith(
+                            color: AppTheme.textGrey,
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        "Welcome back,",
-                        style: AppTheme.bodyMedium.copyWith(
-                          color: AppTheme.textGrey,
                         ),
-                      ),
-                      Text(
-                        instructorState.name.isNotEmpty
-                            ? instructorState.name
-                            : "Instructor",
-                        style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                        Text(
+                          instructorState.name.isNotEmpty
+                              ? instructorState.name
+                              : "Instructor",
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
+                  const SizedBox(
+                    width: 16,
+                  ), // Add spacing between text and avatar
                   Container(
                     width: 50,
                     height: 50,
@@ -220,7 +224,7 @@ class InstructorDashboardScreen extends ConsumerWidget {
                       'Trust & Reputation',
                       const Color(0xFF10B981),
                       () {
-                         Navigator.of(context).push(
+                        Navigator.of(context).push(
                           MaterialPageRoute(
                             builder: (context) => InstructorAnalyticsScreen(
                               walletAddress: authState.walletAddress!,
@@ -233,7 +237,7 @@ class InstructorDashboardScreen extends ConsumerWidget {
                 ],
               ),
               const SizedBox(height: 24),
-              
+
               // Recent Activity
               Text(
                 'RECENT ACTIVITY',
@@ -291,7 +295,10 @@ class InstructorDashboardScreen extends ConsumerWidget {
                 color: color,
               ),
             ),
-            Text(label, style: TextStyle(color: AppTheme.textGrey, fontSize: 12)),
+            Text(
+              label,
+              style: TextStyle(color: AppTheme.textGrey, fontSize: 12),
+            ),
           ],
         ),
       ),
