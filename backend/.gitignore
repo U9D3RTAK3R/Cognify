@@ -2,6 +2,10 @@
 bin/
 tmp/
 
+#env files
+.env
+serviceAccountKey.json
+
 # Mac OS X files
 .DS_Store
 
