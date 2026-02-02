@@ -1,7 +1,10 @@
 package api
 
 import (
+	"context"
+	"encoding/json"
 	"net/http"
+	"time"
 
 	"cache-crew/cognify/internal/db"
 	"cache-crew/cognify/internal/models"
@@ -152,4 +155,77 @@ func SeedBattleDataHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	respondJSON(w, http.StatusOK, map[string]string{"message": "Seeded courses and questions with Advanced Animations levels"})
+}
+
+// BattleCompleteRequest request body
+type BattleCompleteRequest struct {
+	UserID string `json:"userId"`
+	Win    bool   `json:"win"`
+	XP     int    `json:"xp"`
+}
+
+// CompleteBattleHandler handles battle completion stats updates
+func CompleteBattleHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req BattleCompleteRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid request"})
+		return
+	}
+
+	ctx := r.Context()
+	if db.FirestoreClient == nil {
+		respondJSON(w, http.StatusOK, map[string]string{"message": "Mock battle complete (no DB)"})
+		return
+	}
+
+	// Get UserStats
+	statsRef := db.FirestoreClient.Collection("user_stats").Doc(req.UserID)
+	doc, err := statsRef.Get(ctx)
+
+	var stats models.UserStats
+	if err == nil {
+		doc.DataTo(&stats)
+	} else {
+		// New stats if missing
+		stats = models.UserStats{UserID: req.UserID, Level: 1}
+	}
+
+	// Update Stats
+	stats.BattlesPlayed++
+	if req.Win {
+		stats.BattlesWon++
+	}
+	stats.TotalXP += req.XP
+	stats.Level = calculateLevel(stats.TotalXP)
+
+	// Update Weekly XP
+	if stats.WeeklyXP == nil {
+		stats.WeeklyXP = make(map[string]int)
+	}
+	todayStr := time.Now().Format("2006-01-02")
+	stats.WeeklyXP[todayStr] += req.XP
+
+	// Save
+	_, err = statsRef.Set(ctx, stats)
+	if err != nil {
+		respondJSON(w, http.StatusInternalServerError, map[string]string{"error": "Failed to update stats"})
+		return
+	}
+
+	// Update Global Rank async
+	go updateGlobalRanks(context.Background())
+
+	// Check Achievements async
+	go CheckAndUnlockAchievements(context.Background(), req.UserID, stats)
+
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"success":    true,
+		"newTotalXp": stats.TotalXP,
+		"battlesWon": stats.BattlesWon,
+	})
 }

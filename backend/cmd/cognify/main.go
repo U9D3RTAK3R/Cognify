@@ -167,6 +167,7 @@ func main() {
 	})
 	r.Get("/api/courses/recommendations", api.GetRecommendationsHandler)
 	r.Get("/api/battles/questions", api.GetBattleQuestionsHandler)
+	r.Post("/api/battles/complete", api.CompleteBattleHandler)
 	r.Post("/api/seed-battle-data", api.SeedBattleDataHandler)
 	r.Post("/api/notifications/seed", api.SeedNotificationsHandler(db.FirestoreClient))
 

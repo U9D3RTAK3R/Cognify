@@ -12,13 +12,16 @@ class ProgressChart extends ConsumerWidget {
     final userStats = ref.watch(gamificationProvider).userStats;
     final weeklyXp = userStats.weeklyXp;
 
-    // Ensure we have 7 days of data and reverse it for chronological order (Oldest -> Newest)
-    final List<int> rawData = weeklyXp.length >= 7
-        ? weeklyXp.take(7).toList()
-        : List<int>.filled(7, 0);
-
-    // Backend sends [Today, Yesterday, ...]. We need [6 days ago, ..., Today]
-    final List<int> data = rawData.reversed.toList();
+    // Generate last 7 days keys (Today to 6 days ago)
+    final List<int> data = List.generate(7, (index) {
+      // index 0 = 6 days ago, index 6 = Today
+      // We want the chart to go from left (oldest) to right (newest)
+      final date = DateTime.now().subtract(Duration(days: 6 - index));
+      // Format as YYYY-MM-DD to match backend key
+      final key =
+          "${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
+      return weeklyXp[key] ?? 0;
+    });
 
     return Container(
       height: 200,

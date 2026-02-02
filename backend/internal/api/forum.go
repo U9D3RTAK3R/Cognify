@@ -186,6 +186,31 @@ func CreatePostHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// ---------------------------------------------------------
+	// UPDATE USER STATS (ForumPosts)
+	// ---------------------------------------------------------
+	if db.FirestoreClient != nil {
+		statsRef := db.FirestoreClient.Collection("user_stats").Doc(req.AuthorID)
+
+		// 1. Increment ForumPosts
+		_, err := statsRef.Update(r.Context(), []firestore.Update{
+			{Path: "forumPosts", Value: firestore.Increment(1)},
+		})
+
+		// 2. Check Achievements (async)
+		if err == nil {
+			go func() {
+				// We need to fetch fresh stats to check achievements
+				doc, err := statsRef.Get(context.Background())
+				if err == nil {
+					var stats models.UserStats
+					doc.DataTo(&stats)
+					CheckAndUnlockAchievements(context.Background(), req.AuthorID, stats)
+				}
+			}()
+		}
+	}
+
 	respondJSON(w, http.StatusCreated, map[string]interface{}{
 		"success": true,
 		"post":    post,
@@ -322,6 +347,27 @@ func AddCommentHandler(w http.ResponseWriter, r *http.Request) {
 		})
 		if err != nil {
 			// Log but don't fail - comment was saved
+		}
+
+		// ---------------------------------------------------------
+		// UPDATE USER STATS (ForumComments) & CHECK ACHIEVEMENTS
+		// ---------------------------------------------------------
+		statsRef := db.FirestoreClient.Collection("user_stats").Doc(req.AuthorID)
+		_, err = statsRef.Update(r.Context(), []firestore.Update{
+			{Path: "forumComments", Value: firestore.Increment(1)},
+		})
+
+		// Check Achievements Async
+		if err == nil {
+			go func() {
+				// We need to fetch fresh stats to check achievements
+				doc, err := statsRef.Get(context.Background())
+				if err == nil {
+					var stats models.UserStats
+					doc.DataTo(&stats)
+					CheckAndUnlockAchievements(context.Background(), req.AuthorID, stats)
+				}
+			}()
 		}
 	}
 

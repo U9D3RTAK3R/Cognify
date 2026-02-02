@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context" // Added
 	"log"
 	"net/http"
 	"time"
@@ -92,6 +93,118 @@ var achievements = []models.Achievement{
 		XPReward:    300,
 		Category:    "learning",
 	},
+	{
+		ID:          "comment_critic",
+		Name:        "Comment Critic",
+		Description: "Post 3 comments on the forum",
+		Emoji:       "💬",
+		Requirement: "Post 3 comments",
+		XPReward:    50,
+		Category:    "social",
+	},
+}
+
+// CheckAndUnlockAchievements checks if the user has unlocked any new achievements
+func CheckAndUnlockAchievements(ctx context.Context, userID string, stats models.UserStats) {
+	if db.FirestoreClient == nil {
+		return
+	}
+
+	// 1. Get already unlocked achievements
+	iter := db.FirestoreClient.Collection("user_achievements").Where("userId", "==", userID).Documents(ctx)
+	unlockedIDs := make(map[string]bool)
+	for {
+		doc, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			log.Printf("Error unlocking achievements: %v", err)
+			return
+		}
+		var ua models.UserAchievement
+		if err := doc.DataTo(&ua); err == nil {
+			unlockedIDs[ua.AchievementID] = true
+		}
+	}
+
+	// 2. Check requirements
+	for _, ach := range achievements {
+		if unlockedIDs[ach.ID] {
+			continue // Already unlocked
+		}
+
+		unlocked := false
+		switch ach.ID {
+		case "first_win":
+			if stats.BattlesWon >= 1 {
+				unlocked = true
+			}
+		case "battle_veteran":
+			if stats.BattlesWon >= 10 {
+				unlocked = true
+			}
+		case "streak_7":
+			if stats.CurrentStreak >= 7 {
+				unlocked = true
+			}
+		case "streak_30":
+			if stats.CurrentStreak >= 30 {
+				unlocked = true
+			}
+		case "social_butterfly":
+			if stats.ForumPosts >= 5 {
+				unlocked = true
+			}
+		case "comment_critic":
+			if stats.ForumComments >= 3 {
+				unlocked = true
+			}
+		case "course_complete":
+			if stats.CoursesCompleted >= 1 {
+				unlocked = true
+			}
+		}
+
+		if unlocked {
+			// Grant Achievement
+			log.Printf("Unlocking achievement %s for user %s", ach.ID, userID)
+
+			// 1. Create UserAchievement logic
+			ua := models.UserAchievement{
+				ID:            ach.ID + "_" + userID,
+				UserID:        userID,
+				AchievementID: ach.ID,
+				UnlockedAt:    time.Now(),
+			}
+			_, err := db.FirestoreClient.Collection("user_achievements").Doc(ua.ID).Set(ctx, ua)
+			if err != nil {
+				log.Printf("Failed to save achievement %s: %v", ach.ID, err)
+				continue
+			}
+
+			// 2. Grant XP
+			stats.TotalXP += ach.XPReward
+
+			// Update stats with new XP (careful not to subscribe to race conditions if caller saves too, but caller usually saves stats BEFORE calling this.
+			// Actually, we should update the stats object and let caller save? Or save here?
+			// The caller typically passes a COPY or a pointer.
+			// Better: Update stats completely here and save it? Or just increment XP in DB?
+			// To be safe and avoid overwriting caller's specific updates, we should use atomic increment for XP or just re-save.
+			// Re-saving might overwrite caller's changes if not careful.
+			// Let's assume this function is called AFTER caller saves their specific updates,
+			// AND we only update XP here.
+
+			_, err = db.FirestoreClient.Collection("user_stats").Doc(userID).Update(ctx, []firestore.Update{
+				{Path: "totalXp", Value: firestore.Increment(ach.XPReward)},
+			})
+			if err != nil {
+				log.Printf("Failed to award XP for achievement %s: %v", ach.ID, err)
+			}
+
+			// Also notify user? (For now just log)
+		}
+	}
 }
 
 // GetAchievementsHandler returns all available achievements
@@ -323,6 +436,17 @@ func SeedDataHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Warning: Failed to update user document for %s: %v", userID, err)
 	}
 
+	// Generate past 7 days XP map
+	weeklyXP := make(map[string]int)
+	now := time.Now()
+	testXP := []int{120, 150, 180, 90, 200, 160, 220} // Just some values
+
+	// Fill map backwards (today, yesterday, etc.)
+	for i := 0; i < 7; i++ {
+		dateStr := now.AddDate(0, 0, -i).Format("2006-01-02")
+		weeklyXP[dateStr] = testXP[i%len(testXP)]
+	}
+
 	// Seed user_stats for the requested user
 	_, err = db.FirestoreClient.Collection("user_stats").Doc(userID).Set(ctx, map[string]interface{}{
 		"userId":           userID,
@@ -339,7 +463,7 @@ func SeedDataHandler(w http.ResponseWriter, r *http.Request) {
 		"globalRank":       42,
 		"forumPosts":       5,
 		"forumComments":    12,
-		"weeklyXp":         []int{120, 150, 180, 90, 200, 160, 220}, // Mock weekly XP
+		"weeklyXp":         weeklyXP,
 		"categoryStats": map[string]int{
 			"Flutter":  40,
 			"Python":   25,

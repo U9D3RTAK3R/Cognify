@@ -139,6 +139,7 @@ class Comment {
       downvotedBy: Set<String>.from(
         json['downvotedBy'] ?? json['DownvotedBy'] ?? [],
       ),
+      parentId: json['parentId'] ?? json['ParentId'],
     );
   }
 

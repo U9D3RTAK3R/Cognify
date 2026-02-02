@@ -161,11 +161,12 @@ func CompleteLessonHandler(w http.ResponseWriter, r *http.Request) {
 	stats.WeakPoints = mergeStringSlices(stats.WeakPoints, weakPoints, 5)
 	stats.StrongPoints = mergeStringSlices(stats.StrongPoints, strongPoints, 5)
 
-	// Update weekly XP - index 0 is today, 6 is 6 days ago
-	if len(stats.WeeklyXP) < 7 {
-		stats.WeeklyXP = make([]int, 7)
+	// Update weekly XP - keys are YYYY-MM-DD
+	if stats.WeeklyXP == nil {
+		stats.WeeklyXP = make(map[string]int)
 	}
-	stats.WeeklyXP[0] += totalXPGained // Add to today's XP
+	todayStr := time.Now().Format("2006-01-02")
+	stats.WeeklyXP[todayStr] += totalXPGained
 
 	// Save stats to user_stats collection
 	_, err = statsRef.Set(ctx, stats)
@@ -195,13 +196,40 @@ func CompleteLessonHandler(w http.ResponseWriter, r *http.Request) {
 	if progress > 1 {
 		progress = 1
 	}
+
+	// Check if this specific completion event triggers course completion
+	// We need to fetch previous enrollment status to avoid double counting if re-playing
+	// But for simplicity/MVP, we just set it.
+	// To strictly increment CoursesCompleted only once, we should check if it WAS NOT completed before.
+
+	wasCompleted := false
+	enrollSnap, err := enrollRef.Get(ctx)
+	if err == nil {
+		var prevEnroll models.Enrollment
+		enrollSnap.DataTo(&prevEnroll)
+		wasCompleted = prevEnroll.Completed
+	}
+
+	isNowCompleted := progress >= 1
+
 	enrollRef.Set(ctx, map[string]interface{}{
 		"userId":    req.UserID,
 		"courseId":  req.CourseID,
 		"progress":  progress,
-		"completed": progress >= 1,
+		"completed": isNowCompleted,
 		"updatedAt": time.Now(),
 	}, firestore.MergeAll)
+
+	// Update CoursesCompleted count if newly completed
+	if isNowCompleted && !wasCompleted {
+		_, err = statsRef.Update(ctx, []firestore.Update{
+			{Path: "coursesCompleted", Value: firestore.Increment(1)},
+		})
+		if err == nil {
+			// Update local stats struct to reflect change for achievement check
+			stats.CoursesCompleted++
+		}
+	}
 
 	// 7. Determine next level
 	nextLevelID := ""
@@ -213,6 +241,9 @@ func CompleteLessonHandler(w http.ResponseWriter, r *http.Request) {
 
 	// 8. Recalculate Global Rank
 	go updateGlobalRanks(context.Background())
+
+	// 9. Check Achievements
+	go CheckAndUnlockAchievements(context.Background(), req.UserID, stats)
 
 	respondJSON(w, http.StatusOK, LessonCompleteResponse{
 		Success:         true,
