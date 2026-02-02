@@ -12,7 +12,7 @@ const String _contractAddress =
 
 class BlockchainService {
   final MetaMaskService _metaMaskService = MetaMaskService();
-  final String _backendUrl = ApiConfig.baseUrl;
+  final String _backendUrl = ApiConfig.apiUrl;
 
   /// Orchestrates the full secure minting flow
   /// 1. Prepares mint on backend (generates Academic DNA)

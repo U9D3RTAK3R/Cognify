@@ -1,3 +1,4 @@
+import 'package:cognify/core/config/api_config.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'dart:convert';
@@ -47,7 +48,7 @@ class _PublicCertificateVerificationScreenState
     try {
       // Call Backend API
       final response = await http.post(
-        Uri.parse('http://localhost:8080/api/certificates/verify'),
+        Uri.parse('${ApiConfig.apiUrl}/certificates/verify'),
         body: jsonEncode({'certificateHash': _hashController.text.trim()}),
         headers: {'Content-Type': 'application/json'},
       );

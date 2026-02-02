@@ -1,13 +1,10 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
+import 'package:cognify/core/config/api_config.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
-  // Use localhost for Web, 10.0.2.2 for Android Emulator
-  static const String baseUrl = kIsWeb
-      ? 'http://localhost:8080' // Local Development (Was: https://cognify-gouq.onrender.com)
-      : 'http://10.0.2.2:8080';
+  static const String baseUrl = ApiConfig.baseUrl;
 
   static Future<Map<String, String>> _getHeaders() async {
     final prefs = await SharedPreferences.getInstance();
