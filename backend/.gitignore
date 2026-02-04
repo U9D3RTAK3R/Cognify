@@ -2,6 +2,10 @@
 bin/
 tmp/
 
+#env variables
+.env
+serviceAccountKey.json
+
 # Mac OS X files
 .DS_Store
 
@@ -23,6 +27,3 @@ tmp/
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
-
-.env
-serviceAccountKey.json

@@ -211,7 +211,7 @@ func verifySignature(address, signature, message string) (bool, error) {
 	}
 
 	recoveredAddr := crypto.PubkeyToAddress(*pubKey)
-	return strings.EqualFold(recoveredAddr.Hex(), address), nil
+	return strings.ToLower(recoveredAddr.Hex()) == strings.ToLower(address), nil
 }
 
 func getUserByWallet(ctx context.Context, wallet string) (*models.User, error) {

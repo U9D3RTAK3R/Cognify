@@ -1,265 +1,96 @@
 import 'dart:convert';
-import 'dart:async';
-import 'dart:js_interop';
-import 'dart:js_interop_unsafe';
-import 'package:cognify/core/config/api_config.dart';
 import 'package:http/http.dart' as http;
-import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; 
+import '../models/trust_analytics.dart';
+import '../config/api_config.dart';
 
-/// MetaMask wallet service for Web3 authentication (Web-only)
-/// Uses dart:js_interop to communicate with MetaMask browser extension
-class MetaMaskService {
-  static const String _walletKey = 'connected_wallet';
-  static const String _userKey = 'user_data';
+class TrustAnalyticsService {
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  String? _connectedWallet;
-
-  // Singleton pattern
-  static final MetaMaskService _instance = MetaMaskService._internal();
-  factory MetaMaskService() => _instance;
-  MetaMaskService._internal();
-
-  /// Initialize service
-  Future<void> initialize() async {
-    await _loadSavedWallet();
-  }
-
-  /// Check if MetaMask is installed
-  bool get isMetaMaskInstalled {
-    if (!kIsWeb) return false;
-    // Check if 'ethereum' property exists on the global window object
-    return globalContext.has('ethereum');
-  }
-
-  /// Get connected wallet address
-  String? get connectedWallet => _connectedWallet;
-
-  /// Connect to MetaMask wallet
-  Future<String?> connectWallet() async {
-    if (!kIsWeb) {
-      throw UnsupportedError('MetaMask is only supported on web');
-    }
-
-    if (!isMetaMaskInstalled) {
-      throw Exception('MetaMask is not installed');
-    }
-
+  /// Fetch detailed trust analytics for a certificate (HTTP)
+  Future<TrustAnalytics?> getTrustAnalytics(String certificateHash) async {
     try {
-      // Request accounts from MetaMask
-      // eth_requestAccounts takes no parameters usually, but we pass empty list
-      final accounts = await callMethod('eth_requestAccounts', []);
-
-      // Result is a JSArray of strings
-      // We need to verify what we get back. usually it's a List<dynamic> (from toDart)
-      // or we might need to cast.
-
-      final List<dynamic> accountList = (accounts as JSArray).toDart;
-
-      if (accountList.isNotEmpty) {
-        // The items in the list might be JSStrings, convert to Dart String
-        final account = (accountList[0] as JSString).toDart;
-        _connectedWallet = account;
-        await _saveWallet(_connectedWallet!);
-        return _connectedWallet;
-      }
-
-      return null;
-    } catch (e) {
-      debugPrint('Error connecting wallet: $e');
-      throw Exception('MetaMask Error: $e');
-    }
-  }
-
-  /// Sign authentication message
-  Future<String?> signMessage(String message) async {
-    if (_connectedWallet == null) {
-      throw Exception('Wallet not connected');
-    }
-
-    if (!kIsWeb) {
-      throw UnsupportedError('MetaMask is only supported on web');
-    }
-
-    try {
-      // Hex-encode the message for personal_sign
-      final hexMessage = _toHex(message);
-
-      // personal_sign params: [message, address]
-      // personal_sign params: [message, address]
-      final signature = await callMethod('personal_sign', [
-        hexMessage,
-        _connectedWallet,
-      ]);
-
-      return (signature as JSString).toDart;
-    } catch (e) {
-      debugPrint('Error signing message: $e');
-      return null;
-    }
-  }
-
-  /// Helper to convert string to hex with 0x prefix
-  String _toHex(String input) {
-    if (input.startsWith('0x')) return input;
-    return '0x${input.codeUnits.map((c) => c.toRadixString(16).padLeft(2, '0')).join()}';
-  }
-
-  /// Authenticate with backend using wallet signature
-  Future<Map<String, dynamic>?> authenticate({
-    required String studentName,
-    String? email,
-    String? role,
-  }) async {
-    if (_connectedWallet == null) {
-      throw Exception('Wallet not connected');
-    }
-
-    try {
-      // 1. Get Nonce from Backend
-      final nonceResponse = await http.post(
-        Uri.parse(
-          '${ApiConfig.apiUrl}/auth/nonce',
-        ), // Use correct backend URL
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'walletAddress': _connectedWallet}),
-      );
-
-      if (nonceResponse.statusCode != 200) {
-        throw Exception('Failed to get nonce from backend');
-      }
-
-      final nonceData = jsonDecode(nonceResponse.body);
-      final messageToSign = nonceData['message'];
-
-      // 2. Sign the Nonce Message
-      final signature = await signMessage(messageToSign);
-      if (signature == null) {
-        return null;
-      }
-
-      // 3. Send Signature to Backend
-      final response = await http.post(
-        Uri.parse('${ApiConfig.apiUrl}/auth/login/wallet'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'walletAddress': _connectedWallet,
-          'signature': signature,
-          'email': email,
-          'role': role,
-        }),
+      final response = await http.get(
+        Uri.parse('${ApiConfig.apiUrl}/analytics/trust?hash=$certificateHash'),
       );
 
       if (response.statusCode == 200) {
-        final userData = jsonDecode(response.body);
-        await _saveUserData(userData);
-        return userData;
+        final data = json.decode(response.body);
+        return TrustAnalytics.fromJson(data);
+      } else {
+        print('Failed to fetch trust analytics: ${response.statusCode}');
+        return null;
       }
-
-      return null;
     } catch (e) {
-      debugPrint('Error authenticating: $e');
+      print('Error fetching trust analytics: $e');
       return null;
     }
   }
 
-  /// Disconnect wallet
-  Future<void> disconnect() async {
-    _connectedWallet = null;
-    await _clearSavedData();
+  /// Get real-time updates for trust analytics (Firestore Stream)
+  Stream<TrustAnalytics?> getTrustAnalyticsStream(String certificateHash) {
+    // Listen to certificate document changes
+    return _firestore
+        .collection('certificates')
+        .doc(certificateHash)
+        .snapshots()
+        .asyncMap((certDoc) async {
+      if (!certDoc.exists) return null;
+
+      // When the certificate changes (e.g. verification count increments), 
+      // we should re-fetch the full analytics from the API to get the computed breakdown
+      // OR, ideally, the backend updates a dedicated 'public_analytics' doc. 
+      // For now, let's trigger an API refresh or manual construction. 
+      // For simplicity/performance in this demo phase: 
+      // We will pull the latest Verification Count and Score directly from Firestore 
+      // and merge it, or just call the API again.
+      
+      // Better approach for Real-time: Listen to verification_metrics collection
+      final metricsDoc = await _firestore.collection('verification_metrics').doc(certificateHash).get();
+      
+      // We still need the full breakdown which is complex to calc on client.
+      // So valid approach: When stream triggers, call API.
+      // Note: This creates read amplification but ensures fresh logic.
+      return await getTrustAnalytics(certificateHash);
+    });
   }
 
-  /// Call Ethereum method via MetaMask using dart:js_interop
-  Future<JSAny?> callMethod(String method, List<dynamic> params) async {
-    if (!kIsWeb) {
-      throw UnsupportedError('MetaMask is only supported on web');
-    }
-
+  /// Fetch instructor analytics
+  Future<Map<String, dynamic>?> getInstructorAnalytics(String walletAddress) async {
     try {
-      // Get ethereum object from global context
-      final ethereum = globalContext['ethereum'] as JSObject?;
+      final response = await http.get(
+        Uri.parse('${ApiConfig.apiUrl}/analytics/instructor?wallet=$walletAddress'),
+      );
 
-      if (ethereum == null) {
-        throw Exception('MetaMask is not available');
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else {
+        print('Failed to fetch instructor analytics: ${response.statusCode}');
+        return null;
       }
-
-      // Create request object { method: '...', params: [...] }
-      final requestObj = JSObject();
-      requestObj['method'] = method.toJS;
-
-      // Convert params list to Dart list of JSAny? first, then to JSArray
-      final List<JSAny?> jsParamsList = [];
-      for (var p in params) {
-        if (p is String) {
-          jsParamsList.add(p.toJS);
-        } else if (p is Map) {
-          // Convert Map to JSObject (e.g. for transaction params)
-          final paramObj = JSObject();
-          p.forEach((k, v) {
-            if (v is String) paramObj[k.toString()] = v.toJS;
-            // Add other types logic if needed
-          });
-          jsParamsList.add(paramObj);
-        } else if (p == null) {
-          jsParamsList.add(null);
-        } else if (p is JSAny) {
-          jsParamsList.add(p);
-        }
-      }
-
-      requestObj['params'] = jsParamsList.toJS;
-
-      // Call ethereum.request(requestObj)
-      // request returns a Promise
-      final promise = ethereum.callMethod('request'.toJS, requestObj);
-
-      // Convert Promise to Dart Future
-      final result = await (promise as JSPromise).toDart;
-      return result;
     } catch (e) {
-      debugPrint('Error calling Ethereum method: $e');
-      throw Exception('MetaMask Error: $e');
+      print('Error fetching instructor analytics: $e');
+      return null;
     }
   }
 
-  /// Save wallet address to local storage
-  Future<void> _saveWallet(String wallet) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_walletKey, wallet.toLowerCase());
-  }
+  /// Trigger reputation update for an instructor
+  Future<bool> updateInstructorReputation(String walletAddress) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${ApiConfig.apiUrl}/analytics/instructor/update-reputation?wallet=$walletAddress'),
+      );
 
-  /// Load saved wallet from local storage
-  Future<void> _loadSavedWallet() async {
-    final prefs = await SharedPreferences.getInstance();
-    _connectedWallet = prefs.getString(_walletKey);
-  }
-
-  /// Save user data to local storage
-  Future<void> _saveUserData(Map<String, dynamic> userData) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_userKey, jsonEncode(userData));
-  }
-
-  /// Get saved user data
-  Future<Map<String, dynamic>?> getSavedUserData() async {
-    final prefs = await SharedPreferences.getInstance();
-    final data = prefs.getString(_userKey);
-    if (data != null) {
-      return jsonDecode(data);
+      if (response.statusCode == 200) {
+        return true;
+      } else {
+        print('Failed to update reputation: ${response.statusCode}');
+        return false;
+      }
+    } catch (e) {
+      print('Error updating reputation: $e');
+      return false;
     }
-    return null;
-  }
-
-  /// Clear all saved data
-  Future<void> _clearSavedData() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_walletKey);
-    await prefs.remove(_userKey);
-  }
-
-  /// Format wallet address for display (0x1234...5678)
-  static String formatAddress(String address) {
-    if (address.length < 10) return address;
-    return '${address.substring(0, 6)}...${address.substring(address.length - 4)}';
   }
 }
+

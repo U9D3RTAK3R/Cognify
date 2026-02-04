@@ -201,7 +201,6 @@ func CompleteBattleHandler(w http.ResponseWriter, r *http.Request) {
 		stats.BattlesWon++
 	}
 	stats.TotalXP += req.XP
-	UpdateStreak(&stats) // Update streak logic
 	stats.Level = calculateLevel(stats.TotalXP)
 
 	// Update Weekly XP

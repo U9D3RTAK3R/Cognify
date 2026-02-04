@@ -23,10 +23,7 @@ import (
 func main() {
 	// Load environment variables from .env file
 	if err := godotenv.Load(); err != nil {
-		// Try loading from backend directory if run from root
-		if err := godotenv.Load("backend/.env"); err != nil {
-			log.Println("No .env file found, using system environment variables")
-		}
+		log.Println("No .env file found, using system environment variables")
 	}
 
 	// Load configuration

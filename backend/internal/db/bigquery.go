@@ -7,7 +7,6 @@ import (
 	"cloud.google.com/go/bigquery"
 
 	"cache-crew/cognify/internal/config"
-	"google.golang.org/api/option"
 )
 
 var BigQueryClient *bigquery.Client
@@ -19,14 +18,8 @@ func InitBigQuery(ctx context.Context) error {
 		return nil
 	}
 
-	var opts []option.ClientOption
-	credPath := config.AppConfig.FirebaseCredentialsPath
-	if credPath != "" {
-		opts = append(opts, option.WithCredentialsFile(credPath))
-	}
-
 	var err error
-	BigQueryClient, err = bigquery.NewClient(ctx, projectID, opts...)
+	BigQueryClient, err = bigquery.NewClient(ctx, projectID)
 	if err != nil {
 		log.Printf("Warning: Could not initialize BigQuery: %v", err)
 		log.Println("Running in mock mode without BigQuery")

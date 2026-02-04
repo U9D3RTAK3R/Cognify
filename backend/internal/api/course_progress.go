@@ -148,7 +148,6 @@ func CompleteLessonHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	stats.TotalXP += totalXPGained
-	UpdateStreak(&stats) // Update streak logic
 	stats.Level = calculateLevel(stats.TotalXP)
 
 	// Update confidence score (rolling average with new score)
@@ -301,9 +300,15 @@ Respond in JSON ONLY:
 
 	// Strip markdown code blocks if present (Gemini sometimes wraps JSON)
 	resultText = strings.TrimSpace(resultText)
-	resultText = strings.TrimPrefix(resultText, "```json")
-	resultText = strings.TrimPrefix(resultText, "```")
-	resultText = strings.TrimSuffix(resultText, "```")
+	if strings.HasPrefix(resultText, "```json") {
+		resultText = strings.TrimPrefix(resultText, "```json")
+	}
+	if strings.HasPrefix(resultText, "```") {
+		resultText = strings.TrimPrefix(resultText, "```")
+	}
+	if strings.HasSuffix(resultText, "```") {
+		resultText = strings.TrimSuffix(resultText, "```")
+	}
 	resultText = strings.TrimSpace(resultText)
 
 	log.Printf("AI Response (cleaned): %s", resultText)

@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'package:cognify/core/config/api_config.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
-import '../../../../core/constants/api_constants.dart';
 import '../../../core/providers/user_state.dart';
 import '../../../core/services/notification_service.dart';
 import '../../../core/services/audio_service.dart';

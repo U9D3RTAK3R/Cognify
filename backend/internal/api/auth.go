@@ -262,7 +262,7 @@ func VerifyOTPHandler(w http.ResponseWriter, r *http.Request) {
 	if req.Email == "" || req.Code == "" {
 		respondJSON(w, http.StatusBadRequest, AuthResponse{
 			Success: false,
-			Message: "Email and code are required",
+			Message: fmt.Sprintf("Email and code are required"),
 		})
 		return
 	}
