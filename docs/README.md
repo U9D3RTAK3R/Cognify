@@ -83,19 +83,19 @@ The solution leverages **Google technologies** alongside modern web tooling for 
   https://github.com/U9D3RTAK3R/Cognify  
 
 - **Live MVP**  
-  https://cognify-deploy.vercel.app  
+  https://cognify.localplayer.dev 
 
-- **Demo Video (3 min)**  
-  https://youtu.be/qfJpO4ETuLw  
+- **Demo Video (5-6 min)**  
+  https://youtu.be/e-fM7EHOIu0 
 
 ---
 
 ## 👥 Team Details
 
 - **Team Name:** CacheCrew  
-- **Team Leader:** Aritra Saha  
-- **Domain:** AI · EdTech  
-- **Problem Statement:** Open Innovation  
+- **Team Members:** Aritra Saha (Lead), Anirban RoyChowdhury, Sinchan Bhattacharjee, Swapranit Chatterjee  
+- **Domain:** AI · EdTech · BlockChain
+- **Theme:** EdTech and Learning 
 
 ---
 
